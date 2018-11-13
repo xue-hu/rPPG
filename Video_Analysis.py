@@ -8,16 +8,20 @@ import process_data
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 
 NUM_LABELS=3862
-TRAIN_VIDEO_PATHS = 'D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi'
-TRAIN_LABEL_PATHS = 'D:\PycharmsProject\yutube8M\data\ple.txt'
-TEST_VIDEO_PATHS = 'D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi'
-TEST_LABEL_PATHS = 'D:\PycharmsProject\yutube8M\data\ple.txt'
+TRAIN_VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
+TRAIN_LABEL_PATHS = ['D:\PycharmsProject\yutube8M\data\ple.txt']
+TEST_VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
+TEST_LABEL_PATHS = ['D:\PycharmsProject\yutube8M\data\ple.txt']
 
 
 class VideoAnalysis(object):
-    def __init__(self, img_width=492, img_height=492):
-        # self.video_paths = video_paths
-        # self.label_paths = label_paths
+    def __init__(self, train_video_paths, train_label_paths,
+                 test_video_paths, test_label_paths,
+                 img_width=492, img_height=492):
+        self.train_video_paths = train_video_paths
+        self.train_label_paths = train_label_paths
+        self.test_video_paths = test_video_paths
+        self.test_label_paths = test_label_paths
         self.width = img_width
         self.height = img_height
         self.lr = 0.02
@@ -32,11 +36,11 @@ class VideoAnalysis(object):
         batch_gen = process_data.get_batch(sample_gen, self.batch_size)
         return batch_gen
 
-    def create_input(self, train_video_paths, train_label_paths, test_video_paths, test_label_paths):
+    def create_input(self, train_video_path, train_label_path, test_video_path, test_label_path):
         print("create new training-set generator.....")
-        self.train_gen = self.get_data(train_video_paths, train_label_paths)
+        self.train_gen = self.get_data(train_video_path, train_label_path)
         print("create new testing-set generator.....")
-        self.test_gen = self.get_data(test_video_paths, test_label_paths)
+        self.test_gen = self.get_data(test_video_path, test_label_path)
 
     def loading_model(self):
         self.input_img = tf.placeholder(dtype=tf.float32, name='input_img', shape=[self.batch_size, self.width, self.height, 3])
@@ -83,8 +87,15 @@ class VideoAnalysis(object):
         n_batch = 0
         try:
             while True:
-                print("batch " + str(n_batch + 1))
+                print("epoch " + str(epoch+1)+"-" + str(n_batch + 1))
                 frames, diffs, labels = next(self.train_gen)
+                ##########testing the generator##############
+                # for frame, diff, label in zip(frames, diffs, labels):
+                #     cv2.imshow('face', frame)
+                #     cv2.imshow('diff', diff)
+                #     print(label)
+                #     cv2.waitKey(0)
+                ############################################
                 loss, _, summary = sess.run([self.loss, self.opt, summary_op], feed_dict={self.input_img: frames,
                                                                                           self.input_diff: diffs,
                                                                                           self.labels: labels})
@@ -119,42 +130,26 @@ class VideoAnalysis(object):
         print("begin to train.....")
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
+            print("initialization completed.")
             writer = tf.summary.FileWriter('./graphs/', sess.graph)
+            print("computational graph saved.")
             saver = tf.train.Saver()
             summary_op = self.create_summary()
             # if tf.train.checkpoint_exists('./checkpoint'):
             #     saver.restore(sess, './checkpoint')
-
-            for epoch in range(n_epoch):
-                self.train_one_epoch(sess, writer, saver, summary_op, epoch)
-                self.eval_once(sess, writer, summary_op, epoch)
-                # self.create_input(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
-                # total_loss = 0
-                # n_batch = 0
-                # try:
-                #     while True:
-                #         print("batch "+str(n_batch+1))
-                #         frames, diff, labels = next(self.train_gen)
-                #         loss, _, summary = sess.run([self.loss, self.opt, summary_op],feed_dict={self.input_img: frames,
-                #                                                                                  self.input_diff: diff,
-                #                                                                                  self.labels: labels})
-                #         total_loss += loss
-                #         n_batch += 1
-                #         print('Average loss batch {0}: {1}'.format(n_batch, total_loss / n_batch))
-                # except tf.errors.OutOfRangeError:
-                #     pass
-                # print('Average loss epoch {0}: {1}'.format(epoch, total_loss/n_batch))
-                #
-                # if epoch % self.skip_step == 0:
-                #     writer.add_summary(summary, global_step=self.gstep)
-                #     saver.save(sess, 'checkpoint_dict/VideoAnalysis', global_step=self.gstep)
+            for tr_v, tr_l, te_v, te_l in zip(self.train_video_paths, self.train_label_paths,
+                                              self.test_video_paths, self.test_label_paths):
+                self.create_input(tr_v, tr_l, te_v, te_l)
+                for epoch in range(n_epoch):
+                    self.train_one_epoch(sess, writer, saver, summary_op, epoch)
+                    self.eval_once(sess, writer, summary_op, epoch)
+                    self.create_input(tr_v, tr_l, te_v, te_l)
             writer.close()
 
 
 if __name__ == '__main__':
 
-    model = VideoAnalysis()
-    model.create_input(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
+    model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
     model.build_graph()
     model.train(10)
 
