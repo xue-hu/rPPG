@@ -1,0 +1,147 @@
+__author__ = 'Iris'
+
+import os
+import tensorflow as tf
+import cv2
+import utils
+import numpy as np
+import math
+
+ECG_SAMPLE_RATE = 16.0
+PLE_SAMPLE_RATE = 256.0
+FRAME_RATE = 30.0
+VIDEO_DUR = 120
+VIDEO_PATHS = 'D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi'
+LABEL_PATHS = 'D:\PycharmsProject\yutube8M\data\ple.txt'
+
+
+def nor_diff_face(video_path, width=492, height=492):
+    capture = cv2.VideoCapture()
+    capture.release()
+    capture.open(video_path)
+    if not capture.isOpened():
+        return -1
+    # frame_width = int(capture.get(3))
+    frame_height = int(capture.get(4))
+    nframe = int(capture.get(7))
+
+    for idx in range(nframe):
+        print("reading in frame " + str(idx) + "," + str(idx+1))
+        if idx == 0 :
+            rd, pre_frame = capture.read()
+            if not rd:
+                return -1
+        else :
+            pre_frame = next_frame
+
+        rd, next_frame = capture.read()
+        if not rd:
+            return -1
+        idx+=1
+        pre_faces = utils.detect_face(pre_frame)
+        next_faces = utils.detect_face(next_frame)
+        if pre_faces.size != 0 and next_faces.size != 0:
+            for (x1, y1, w1, h1), (x2, y2, w2, h2) in zip(pre_faces, next_faces):
+                # h1 = min(int(1.6*h1), (frame_height - y1))
+                # h2 = min(int(1.6*h2), (frame_height - y2))
+                p_frame = pre_frame[y1:y1+h1, x1:x1+w1]
+                n_frame = next_frame[y2:y2 + h2, x2:x2 + w2]
+                pre_face = cv2.resize(p_frame,(width,height), interpolation=cv2.INTER_CUBIC)
+                next_face = cv2.resize(n_frame, (width, height), interpolation=cv2.INTER_CUBIC)
+                #cv2.imwrite(('./precessed_data'+str(idx)+'.jpg'),frame)
+                diff = next_face - pre_face
+                mean = cv2.add(next_face>>1 , pre_face>>1)
+                re = diff / mean
+                ########### wait to implement ##############################
+                re = utils.rescale_image(re, deviation=3.0)
+                ############################################################
+                #print(diff)
+                # cv2.imshow("pre",pre_face)
+                # cv2.imshow("next", next_face)
+                #cv2.imshow("diff", diff)
+                # cv2.imshow("mean", mean)
+                # cv2.imshow("re", re)
+                # cv2.waitKey(0)
+                yield re
+    capture.release()
+
+
+def crop_resize_face(video_path, width=492, height=492):
+    capture = cv2.VideoCapture()
+    capture.release()
+    capture.open(video_path)
+    if not capture.isOpened():
+        return -1
+    #frame_width = int(capture.get(3))
+    frame_height = int(capture.get(4))
+    framerate = capture.get(5)
+    nframe = int(capture.get(7))
+
+    for idx in range(nframe):
+        print("reading in frame "+str(idx))
+        rd, frame = capture.read()
+        if not rd:
+            return -1
+        faces = utils.detect_face(frame)
+        if faces.size != 0:
+            for (x, y, w, h) in faces:
+                # Convert bounding box to two CvPoints
+                # pt1 = (int(x), int(0.9*y))
+                # pt2 = (int(x + w), int(y + 1.6*h))
+                # cv2.rectangle(frame, pt1, pt2, (255, 0, 0), 5, 8, 0)
+                h = min(int(1.6*h),(frame_height-y))
+                frame = frame[y:y+h,x:x+w]
+                frame = cv2.resize(frame,(width,height), interpolation=cv2.INTER_CUBIC)
+                frame = utils.rescale_image(frame)
+                #cv2.imwrite(('./precessed_data'+str(idx)+'.jpg'),frame)
+                #frame = np.expand_dims(frame, 0)
+                yield frame
+    capture.release()
+
+
+def get_sample(frame_iterator, diff_iterator, label_paths):
+    with open(label_paths, 'r') as f:
+        lines = f.readlines()
+    skip_step = PLE_SAMPLE_RATE / FRAME_RATE
+    idx = 0
+    while idx < (FRAME_RATE*VIDEO_DUR) :
+        frame = next(frame_iterator)
+        diff = next(diff_iterator)
+        label = float(lines[math.floor(idx*skip_step)])
+        idx+=1
+        yield (frame, diff, label)
+
+
+def get_batch(iterator, batch_size):
+
+    while True:
+        frame_batch = []
+        diff_batch = []
+        label_batch = []
+        for i in range(batch_size):
+            frame, diff, label = next(iterator)
+            frame_batch.append(frame)
+            diff_batch.append(diff)
+            label_batch.append(label)
+        yield frame_batch, diff_batch, label_batch
+
+
+if __name__ == '__main__':
+    ##########batched labeled-samples######################
+    frame_gen = crop_resize_face(VIDEO_PATHS)
+    diff_gen = nor_diff_face(VIDEO_PATHS)
+    sample_gen = get_sample(frame_gen, diff_gen, LABEL_PATHS)
+    batch_gen = get_batch(sample_gen, 3)
+    while True:
+        frames, diffs, labels = next(batch_gen)
+        idx=0
+        for frame, diff, label in zip(frames, diffs, labels):
+            # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
+            # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
+            idx+=1
+            cv2.imshow('face', frame)
+            cv2.imshow('diff', diff)
+            print(label)
+            cv2.waitKey(0)
+    ######################################################
+
