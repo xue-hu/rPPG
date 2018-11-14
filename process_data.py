@@ -23,6 +23,8 @@ def nor_diff_face(video_path, width=492, height=492):
     if not capture.isOpened():
         return -1
     # frame_width = int(capture.get(3))
+    else:
+        print("video opened. start to read in.....")
     frame_height = int(capture.get(4))
     nframe = int(capture.get(7))
 
@@ -75,6 +77,8 @@ def crop_resize_face(video_path, width=492, height=492):
     capture.open(video_path)
     if not capture.isOpened():
         return -1
+    else:
+        print("video opened. start to read in.....")
     # frame_width = int(capture.get(3))
     frame_height = int(capture.get(4))
     framerate = capture.get(5)
@@ -151,5 +155,5 @@ if __name__ == '__main__':
                 #cv2.imshow('face', frame)
                 #cv2.imshow('diff', diff)
                 print(label)
-                cv2.waitKey(0)
+                #cv2.waitKey(0)
     ######################################################

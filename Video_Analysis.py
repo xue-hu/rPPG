@@ -2,6 +2,7 @@
 __author__ = 'Iris'
 
 import os
+import time
 import tensorflow as tf
 import cv2
 import loading_model
@@ -54,9 +55,8 @@ class VideoAnalysis(object):
         self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff',
                                          shape=[self.batch_size, self.width, self.height, 3])
         self.model = loading_model.NnModel(self.input_img, self.input_diff)
-        self.model.vgg_load()
-
-    # self.model.two_stream_vgg_load()
+        #self.model.vgg_load()
+        self.model.two_stream_vgg_load()
 
     def inference(self):
         out = self.model.d_fc7
@@ -103,6 +103,7 @@ class VideoAnalysis(object):
     def train_one_epoch(self, sess, writer, saver, summary_op, epoch):
         total_loss = 0
         n_batch = 0
+        start_time = time.time()
         for tr_v, tr_l in zip(self.train_video_paths, self.train_label_paths):
             train_gen = self.get_data(tr_v, tr_l)
             try:
@@ -125,6 +126,7 @@ class VideoAnalysis(object):
             except tf.errors.OutOfRangeError:
                 pass
         print('Average loss at epoch {0}: {1}'.format(epoch, total_loss / n_batch))
+        print('Took:{0} seconds'.format(time.time() - start_time))
         if epoch % self.skip_step == 0:
             writer.add_summary(summary, global_step=self.gstep)
             saver.save(sess, 'checkpoint_dict/VideoAnalysis', global_step=self.gstep)
