@@ -135,20 +135,21 @@ def get_batch(iterator, batch_size):
 
 if __name__ == '__main__':
     ##########batched labeled-samples######################
-    for v_path, l_path in zip(VIDEO_PATHS, LABEL_PATHS):
+    v_paths, l_paths = utils.create_file_paths([2,3])
+    for v_path, l_path in zip(v_paths, l_paths):
         frame_gen = crop_resize_face(v_path)
         diff_gen = nor_diff_face(v_path)
         sample_gen = get_sample(frame_gen, diff_gen, l_path)
         batch_gen = get_batch(sample_gen, 3)
-        while True:
+        idx = 0
+        while idx < 6:
             frames, diffs, labels = next(batch_gen)
-            idx = 0
             for frame, diff, label in zip(frames, diffs, labels):
                 # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
                 # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
                 idx += 1
-                cv2.imshow('face', frame)
-                cv2.imshow('diff', diff)
+                #cv2.imshow('face', frame)
+                #cv2.imshow('diff', diff)
                 print(label)
                 cv2.waitKey(0)
     ######################################################

@@ -82,8 +82,8 @@ def create_file_paths(probs):
                                '/106_green_lighting', '/107_infrared_lighting'],
                   'movement': ['/202_scale_movement', '/203_translation_movement',
                                '/204_writing', '/201_shouldercheck']}
-    video_name = '/synced_Logitech HD Pro Webcam C920.avi'
-
+    video_name = '/Logitech HD Pro Webcam C920.avi'
+    label_name = '/synced_Logitech HD Pro Webcam C920/'
     sgn_typ = ['1_EKG-AUX.bin', '5_Pleth.bin', '6_Pulse.bin']
 
     video_paths = []
@@ -92,7 +92,7 @@ def create_file_paths(probs):
     for i in probs:
         prob_id = str(i) if (i > 9) else ('0' + str(i))
         video_path = src_path + prob_id + conditions['lighting'][0] + video_name
-        label_path = src_path + prob_id + '/Proband_' + prob_id + '_unisens/' + sgn_typ[1]
+        label_path = src_path + prob_id + conditions['lighting'][0]+label_name + sgn_typ[1]
         video_paths.append(video_path)
         label_paths.append(label_path)
     # print(video_paths)
@@ -103,7 +103,9 @@ def create_file_paths(probs):
 if __name__ == '__main__':
     vd, lb = create_file_paths([1, 10])
     for v, l in zip(vd, lb):
+        print(os.path.exists(v))
         print(v)
+        print(os.path.exists(l))
         print(l)
     # li = cvt_labels(1,8)
     # for i in li:

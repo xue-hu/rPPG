@@ -167,12 +167,12 @@ class VideoAnalysis(object):
 
 if __name__ == '__main__':
     ############using remote dataset######################################################
-    # train_prob_ids= [2]
-    # test_prob_ids = [3,4]
-    # tr_vd_paths, tr_lb_paths = utils.create_file_paths(train_prob_ids)
-    # te_vd_paths, te_lb_paths = utils.create_file_paths(test_prob_ids)
-    # model = VideoAnalysis(tr_vdi_paths, tr_lb_paths, te_vdi_paths, te_lb_paths)
+    train_prob_ids= [2,4]
+    test_prob_ids = [3]
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths(train_prob_ids)
+    te_vd_paths, te_lb_paths = utils.create_file_paths(test_prob_ids)
+    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
     ######################################################################################
-    model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
+    #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
     model.build_graph()
     model.train(10)
