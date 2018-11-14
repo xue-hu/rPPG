@@ -1,3 +1,4 @@
+#!/usr/bin/python3.5
 __author__ = 'Iris'
 
 import os
@@ -11,8 +12,8 @@ ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
 FRAME_RATE = 30.0
 VIDEO_DUR = 120
-VIDEO_PATHS = 'D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi'
-LABEL_PATHS = 'D:\PycharmsProject\yutube8M\data\ple.txt'
+VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
+LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 
 
 def nor_diff_face(video_path, width=492, height=492):
@@ -26,42 +27,42 @@ def nor_diff_face(video_path, width=492, height=492):
     nframe = int(capture.get(7))
 
     for idx in range(nframe):
-        print("reading in frame " + str(idx) + "," + str(idx+1))
-        if idx == 0 :
+        print("reading in frame " + str(idx) + "," + str(idx + 1))
+        if idx == 0:
             rd, pre_frame = capture.read()
             if not rd:
                 return -1
-        else :
+        else:
             pre_frame = next_frame
 
         rd, next_frame = capture.read()
         if not rd:
             return -1
-        idx+=1
+        idx += 1
         pre_faces = utils.detect_face(pre_frame)
         next_faces = utils.detect_face(next_frame)
         if pre_faces.size != 0 and next_faces.size != 0:
             for (x1, y1, w1, h1), (x2, y2, w2, h2) in zip(pre_faces, next_faces):
-                h1 = min(int(1.6*h1), (frame_height - y1))
-                h2 = min(int(1.6*h2), (frame_height - y2))
-                p_frame = pre_frame[y1:y1+h1, x1:x1+w1]
+                h1 = min(int(1.6 * h1), (frame_height - y1))
+                h2 = min(int(1.6 * h2), (frame_height - y2))
+                p_frame = pre_frame[y1:y1 + h1, x1:x1 + w1]
                 n_frame = next_frame[y2:y2 + h2, x2:x2 + w2]
-                pre_face = cv2.resize(p_frame,(width,height), interpolation=cv2.INTER_CUBIC)
+                pre_face = cv2.resize(p_frame, (width, height), interpolation=cv2.INTER_CUBIC)
                 next_face = cv2.resize(n_frame, (width, height), interpolation=cv2.INTER_CUBIC)
-                #cv2.imwrite(('./precessed_data'+str(idx)+'.jpg'),frame)
+                # cv2.imwrite(('./precessed_data'+str(idx)+'.jpg'),frame)
                 diff = np.subtract(next_face, pre_face)
-                mean = cv2.add(next_face>>1 , pre_face>>1)
+                mean = cv2.add(next_face >> 1, pre_face >> 1)
                 re = np.true_divide(diff, mean, dtype=np.float32)
                 re[re == np.inf] = 0
                 re = np.nan_to_num(re)
                 ########### wait to implement ##############################
                 re = utils.rescale_image(re, deviation=3.0)
                 ############################################################
-                #print(re)
+                # print(re)
                 # cv2.imshow("pre",pre_face)
                 # cv2.imshow("next", next_face)
-                #cv2.imshow("diff", diff)
-                #cv2.imshow("mean", mean)
+                # cv2.imshow("diff", diff)
+                # cv2.imshow("mean", mean)
                 # cv2.imshow("re", re)
                 # cv2.waitKey(0)
                 yield re
@@ -74,13 +75,13 @@ def crop_resize_face(video_path, width=492, height=492):
     capture.open(video_path)
     if not capture.isOpened():
         return -1
-    #frame_width = int(capture.get(3))
+    # frame_width = int(capture.get(3))
     frame_height = int(capture.get(4))
     framerate = capture.get(5)
     nframe = int(capture.get(7))
 
     for idx in range(nframe):
-        print("reading in frame "+str(idx))
+        print("reading in frame " + str(idx))
         rd, frame = capture.read()
         if not rd:
             return -1
@@ -91,12 +92,12 @@ def crop_resize_face(video_path, width=492, height=492):
                 # pt1 = (int(x), int(0.9*y))
                 # pt2 = (int(x + w), int(y + 1.6*h))
                 # cv2.rectangle(frame, pt1, pt2, (255, 0, 0), 5, 8, 0)
-                h = min(int(1.6*h),(frame_height-y))
-                frame = frame[y:y+h,x:x+w]
-                frame = cv2.resize(frame,(width,height), interpolation=cv2.INTER_CUBIC)
+                h = min(int(1.6 * h), (frame_height - y))
+                frame = frame[y:y + h, x:x + w]
+                frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC)
                 frame = utils.rescale_image(frame)
-                #cv2.imwrite(('./precessed_data'+str(idx)+'.jpg'),frame)
-                #frame = np.expand_dims(frame, 0)
+                # cv2.imwrite(('./precessed_data'+str(idx)+'.jpg'),frame)
+                # frame = np.expand_dims(frame, 0)
                 yield frame
     capture.release()
 
@@ -107,17 +108,16 @@ def get_sample(frame_iterator, diff_iterator, label_paths):
     skip_step = PLE_SAMPLE_RATE / FRAME_RATE
     labels = utils.cvt_labels(label_paths, skip_step)
     idx = 0
-    while idx < (FRAME_RATE*VIDEO_DUR) :
+    while idx < (FRAME_RATE * VIDEO_DUR):
         frame = next(frame_iterator)
         diff = next(diff_iterator)
         label = float(labels[idx])
-        #label = float(lines[math.floor(idx*skip_step)])
-        idx+=1
+        # label = float(lines[math.floor(idx*skip_step)])
+        idx += 1
         yield (frame, diff, label)
 
 
 def get_batch(iterator, batch_size):
-
     while True:
         frame_batch = []
         diff_batch = []
@@ -135,20 +135,20 @@ def get_batch(iterator, batch_size):
 
 if __name__ == '__main__':
     ##########batched labeled-samples######################
-    frame_gen = crop_resize_face(VIDEO_PATHS)
-    diff_gen = nor_diff_face(VIDEO_PATHS)
-    sample_gen = get_sample(frame_gen, diff_gen, LABEL_PATHS)
-    batch_gen = get_batch(sample_gen, 3)
-    while True:
-        frames, diffs, labels = next(batch_gen)
-        idx=0
-        # for frame, diff, label in zip(frames, diffs, labels):
-        #     # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
-        #     # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
-        #     idx+=1
-        #     cv2.imshow('face', frame)
-        #     cv2.imshow('diff', diff)
-        #     print(label)
-        #     cv2.waitKey(0)
+    for v_path, l_path in zip(VIDEO_PATHS, LABEL_PATHS):
+        frame_gen = crop_resize_face(v_path)
+        diff_gen = nor_diff_face(v_path)
+        sample_gen = get_sample(frame_gen, diff_gen, l_path)
+        batch_gen = get_batch(sample_gen, 3)
+        while True:
+            frames, diffs, labels = next(batch_gen)
+            idx = 0
+            for frame, diff, label in zip(frames, diffs, labels):
+                # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
+                # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
+                idx += 1
+                cv2.imshow('face', frame)
+                cv2.imshow('diff', diff)
+                print(label)
+                cv2.waitKey(0)
     ######################################################
-

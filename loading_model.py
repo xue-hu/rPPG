@@ -1,3 +1,4 @@
+#!/usr/bin/python3.5
 __author__ = 'Iris'
 
 import os
@@ -25,28 +26,29 @@ class NnModel(object):
         w = self.vgg[0][lyr_idx][0][0][2][0][0]
         b = self.vgg[0][lyr_idx][0][0][2][0][1]
         assert lyr_name == self.vgg[0][lyr_idx][0][0][0][0]
-        return w, b.reshape(b.size)  #####why not b???? ValueError: Dimensions must be equal, but are 492 and 64 for 'add' (op: 'Add') with input shapes: [1,492,492,64], [64,1].
+        return w, b.reshape(
+            b.size)  #####why not b???? ValueError: Dimensions must be equal, but are 492 and 64 for 'add' (op: 'Add') with input shapes: [1,492,492,64], [64,1].
 
     def conv2d_relu(self, pre_lyr, lyr_idx, lyr_name, stream_name='d'):
-        w_init, b_init = self.__vgg_weights(lyr_idx,lyr_name)
+        w_init, b_init = self.__vgg_weights(lyr_idx, lyr_name)
         w_init = tf.convert_to_tensor(w_init, dtype=tf.float32)
         b_init = tf.convert_to_tensor(b_init, dtype=tf.float32)
-        #print(w_init.shape)
+        # print(w_init.shape)
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable("weight", dtype=tf.float32, initializer=w_init)
             b = tf.get_variable("bias", dtype=tf.float32, initializer=b_init)
         conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
         out = tf.nn.relu((conv + b), name=scope.name)
-        setattr(self, (stream_name+'_'+lyr_name), out)
+        setattr(self, (stream_name + '_' + lyr_name), out)
 
     def conv2d_tahn(self, pre_lyr, lyr_idx, lyr_name, stream_name='d'):
-        w_init, b_init = self.__vgg_weights(lyr_idx,lyr_name)
+        w_init, b_init = self.__vgg_weights(lyr_idx, lyr_name)
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable("weight", dtype=tf.float32, initializer=w_init)
             b = tf.get_variable("bias", dtype=tf.float32, initializer=b_init)
         conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
         out = tf.nn.tanh((conv + b), name=scope.name)
-        setattr(self, (stream_name+'_'+lyr_name), out)
+        setattr(self, (stream_name + '_' + lyr_name), out)
 
     # def regression_output_layer(self,pre_lyr, lyr_name):
     #     with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
@@ -58,27 +60,25 @@ class NnModel(object):
 
     def maxpool(self, prev_lyr, lyr_name, stream_name='d'):
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
-            out = tf.nn.max_pool(prev_lyr, [1, 2, 2, 1] , [1, 2, 2, 1], padding='VALID', name='pol')
-        setattr(self, (stream_name+'_'+lyr_name), out)
+            out = tf.nn.max_pool(prev_lyr, [1, 2, 2, 1], [1, 2, 2, 1], padding='VALID', name='pol')
+        setattr(self, (stream_name + '_' + lyr_name), out)
 
     def avgpool(self, prev_lyr, lyr_name, stream_name='d'):
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
             out = tf.nn.avg_pool(prev_lyr, [1, 2, 2, 1], [1, 2, 2, 1], padding='VALID', name='pol')
-        setattr(self, (stream_name+'_'+lyr_name), out)
+        setattr(self, (stream_name + '_' + lyr_name), out)
 
     def attention_layer(self, dy_lyr, sta_lyr, dy_lyr_name, sta_lyr_name):
         _, width, height, depth = sta_lyr.shape.as_list()
-        #print(width, height, depth)
+        # print(width, height, depth)
         with tf.variable_scope(sta_lyr_name, reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal([1, 1, depth, 1]))
             b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros([1, ]))
         conv = tf.nn.conv2d(sta_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
         l1_norm = tf.norm(conv, ord=1)
-        mask = width*height*tf.nn.sigmoid(conv+b, name='mask') / (2.0 * l1_norm)
+        mask = width * height * tf.nn.sigmoid(conv + b, name='mask') / (2.0 * l1_norm)
         out = tf.multiply(mask, dy_lyr, name="masked_feat")
         dy_lyr = out
-
-
 
     def two_stream_vgg_load(self):
         print("begin to construct two stream vgg......")
@@ -133,11 +133,11 @@ class NnModel(object):
         self.conv2d_relu(self.s_conv5_3, 34, 'conv5_4', stream_name='s')
         self.attention_layer(self.d_conv5_4, self.s_conv5_4, 'd_conv5_4', 's_conv5_4')
         self.avgpool(self.d_conv5_4, 'pool5')
-        #self.avgpool(self.s_conv5_4, 'pool5', stream_name='s')
+        # self.avgpool(self.s_conv5_4, 'pool5', stream_name='s')
 
         self.conv2d_relu(self.d_pool5, 37, 'fc6')
         self.conv2d_relu(self.d_fc6, 39, 'fc7')
-        #self.regression_output_layer(self.fc7, 'fc8')
+        # self.regression_output_layer(self.fc7, 'fc8')
         # self.conv2d_relu(self.fc7, 41, 'fc8')
         print("done.")
 
@@ -184,4 +184,3 @@ if __name__ == '__main__':
     diff = np.expand_dims(diff, 0)
     model = NnModel(frame, diff)
     model.vgg_load()
-
