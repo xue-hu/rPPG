@@ -5,6 +5,7 @@ import tensorflow as tf
 import cv2
 import loading_model
 import process_data
+import utils
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 
 NUM_LABELS=3862
@@ -24,10 +25,10 @@ class VideoAnalysis(object):
         self.test_label_paths = test_label_paths
         self.width = img_width
         self.height = img_height
-        self.lr = 0.02
+        self.lr = 0.01
         self.batch_size = 2
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
-        self.skip_step = 100
+        self.skip_step = 1
 
     def get_data(self, video_paths, label_paths ):
         frame_gen = process_data.crop_resize_face(video_paths, self.width, self.height )
@@ -36,48 +37,60 @@ class VideoAnalysis(object):
         batch_gen = process_data.get_batch(sample_gen, self.batch_size)
         return batch_gen
 
-    def create_input(self, train_video_path, train_label_path, test_video_path, test_label_path):
-        print("create new training-set generator.....")
-        self.train_gen = self.get_data(train_video_path, train_label_path)
-        print("create new testing-set generator.....")
-        self.test_gen = self.get_data(test_video_path, test_label_path)
+    # def create_training_input(self, train_video_path, train_label_path):
+    #     print("create new training-set generator.....")
+    #     self.train_gen = self.get_data(train_video_path, train_label_path)
+    #
+    # def create_testing_input(self, test_video_path, test_label_path):
+    #     print("create new testing-set generator.....")
+    #     self.test_gen = self.get_data(test_video_path, test_label_path)
 
     def loading_model(self):
-        self.input_img = tf.placeholder(dtype=tf.float32, name='input_img', shape=[self.batch_size, self.width, self.height, 3])
-        self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff', shape=[self.batch_size, self.width, self.height, 3])
+        self.input_img = tf.placeholder(dtype=tf.float32, name='input_img',
+                                        shape=[self.batch_size, self.width, self.height, 3])
+        self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff',
+                                         shape=[self.batch_size, self.width, self.height, 3])
         self.model = loading_model.NnModel(self.input_img, self.input_diff)
         self.model.vgg_load()
         #self.model.two_stream_vgg_load()
 
-    def loss(self):
-        print("crteate loss-Function.....")
+    def inference(self):
         out = self.model.d_fc7
         #############create pred###########################
         with tf.variable_scope('fc8', reuse=tf.AUTO_REUSE) as scope:
-            w = tf.get_variable("weight", dtype=tf.float32, initializer= tf.random_normal( out.shape) )
-            b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros([self.batch_size,]) )
-        z = tf.reduce_sum(tf.multiply(out, w) ) + b
-        pred = tf.nn.relu(z , name=scope.name)
+            w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal(out.shape))
+            b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros([self.batch_size, ]))
+        z = tf.reduce_sum(tf.multiply(out, w)) + b
+        self.pred = tf.nn.relu(z, name=scope.name)
         ################################################
-        self.labels = tf.placeholder(dtype=tf.float32, name='input', shape=[self.batch_size,])
-        self.loss = tf.losses.mean_squared_error(labels=self.labels, predictions=pred)
+
+    def loss(self):
+        print("crteate loss-Function.....")
+        with tf.name_scope('loss'):
+            self.labels = tf.placeholder(dtype=tf.float32, name='input', shape=[self.batch_size, ])
+            self.loss = tf.losses.mean_squared_error(labels=self.labels, predictions=self.pred)
 
     def evaluation(self):
         print("create evaluation methods.....")
-        self.accuracy = 0
+        with tf.name_scope('accuracy'):
+            diff = tf.abs(self.pred - self.labels)
+            indicator = tf.where(diff < 10)
+            self.accuracy = tf.truediv(tf.size(indicator), self.batch_size)
 
     def optimizer(self):
         print("crteate optimizer.....")
-        self.opt = tf.train.AdamOptimizer(self.lr).minimize(self.loss, global_step= self.gstep)
+        self.opt = tf.train.AdamOptimizer(self.lr).minimize(self.loss, global_step=self.gstep)
 
     def create_summary(self):
         print("crteate summary.....")
         tf.summary.scalar('loss', self.loss)
+        tf.summary.scalar('accuracy', self.accuracy)
         summary_op = tf.summary.merge_all()
         return summary_op
 
     def build_graph(self):
         self.loading_model()
+        self.inference()
         self.loss()
         self.evaluation()
         self.optimizer()
@@ -85,25 +98,27 @@ class VideoAnalysis(object):
     def train_one_epoch(self, sess, writer, saver, summary_op, epoch):
         total_loss = 0
         n_batch = 0
-        try:
-            while True:
-                print("epoch " + str(epoch+1)+"-" + str(n_batch + 1))
-                frames, diffs, labels = next(self.train_gen)
-                ##########testing the generator##############
-                # for frame, diff, label in zip(frames, diffs, labels):
-                #     cv2.imshow('face', frame)
-                #     cv2.imshow('diff', diff)
-                #     print(label)
-                #     cv2.waitKey(0)
-                ############################################
-                loss, _, summary = sess.run([self.loss, self.opt, summary_op], feed_dict={self.input_img: frames,
-                                                                                          self.input_diff: diffs,
-                                                                                          self.labels: labels})
-                total_loss += loss
-                n_batch += 1
-                print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
-        except tf.errors.OutOfRangeError:
-            pass
+        for tr_v, tr_l in zip(self.train_video_paths, self.train_label_paths):
+            train_gen = self.get_data(tr_v, tr_l)
+            try:
+                while True:
+                    print("epoch " + str(epoch+1)+"-" + str(n_batch + 1))
+                    frames, diffs, labels = next(train_gen)
+                    ##########testing the generator##############
+                    # for frame, diff, label in zip(frames, diffs, labels):
+                    #     cv2.imshow('face', frame)
+                    #     cv2.imshow('diff', diff)
+                    #     print(label)
+                    #     cv2.waitKey(0)
+                    ############################################
+                    loss, _, summary = sess.run([self.loss, self.opt, summary_op], feed_dict={self.input_img: frames,
+                                                                                              self.input_diff: diffs,
+                                                                                              self.labels: labels})
+                    total_loss += loss
+                    n_batch += 1
+                    print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
+            except tf.errors.OutOfRangeError:
+                pass
         print('Average loss at epoch {0}: {1}'.format(epoch, total_loss / n_batch))
         if epoch % self.skip_step == 0:
             writer.add_summary(summary, global_step=self.gstep)
@@ -113,16 +128,18 @@ class VideoAnalysis(object):
         print("begin to evaluate.....")
         total_accuracy = 0
         n_test = 0
-        try:
-            while True:
-                frames, diffs, labels = next(self.test_gen)
-                accuracy, summary = sess.run([self.accuracy, summary_op], feed_dict={self.input_img: frames,
-                                                                                               self.input_diff: diffs,
-                                                                                               self.labels: labels})
-                total_accuracy += accuracy
-                n_test += 1
-        except tf.errors.OutOfRangeError:
-            pass
+        for te_v, te_l in zip(self.test_video_paths, self.test_label_paths):
+            test_gen = self.get_data(te_v, te_l)
+            try:
+                while True:
+                    frames, diffs, labels = next(test_gen)
+                    accuracy, summary = sess.run([self.accuracy, summary_op],
+                                                 feed_dict={self.input_img: frames,
+                                                            self.input_diff: diffs, self.labels: labels})
+                    total_accuracy += accuracy
+                    n_test += 1
+            except tf.errors.OutOfRangeError:
+                pass
         print('Accuracy at epoch {0}: {1}'.format(epoch, total_accuracy / n_test))
         writer.add_summary(summary, global_step=self.gstep)
 
@@ -137,18 +154,20 @@ class VideoAnalysis(object):
             summary_op = self.create_summary()
             # if tf.train.checkpoint_exists('./checkpoint'):
             #     saver.restore(sess, './checkpoint')
-            for tr_v, tr_l, te_v, te_l in zip(self.train_video_paths, self.train_label_paths,
-                                              self.test_video_paths, self.test_label_paths):
-                self.create_input(tr_v, tr_l, te_v, te_l)
-                for epoch in range(n_epoch):
-                    self.train_one_epoch(sess, writer, saver, summary_op, epoch)
-                    self.eval_once(sess, writer, summary_op, epoch)
-                    self.create_input(tr_v, tr_l, te_v, te_l)
+            for epoch in range(n_epoch):
+                self.train_one_epoch(sess, writer, saver, summary_op, epoch)
+                self.eval_once(sess, writer, summary_op, epoch)
             writer.close()
 
 
 if __name__ == '__main__':
-
+    ############using remote dataset######################################################
+    # train_prob_ids= [2]
+    # test_prob_ids = [3,4]
+    # tr_vdi_paths, tr_lb_paths = utils.create_file_paths(train_prob_ids)
+    # te_vdi_paths, te_lb_paths = utils.create_file_paths(test_prob_ids)
+    # model = VideoAnalysis(tr_vdi_paths, tr_lb_paths, te_vdi_paths, te_lb_paths)
+    ######################################################################################
     model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
     model.build_graph()
     model.train(10)

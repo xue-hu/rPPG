@@ -42,24 +42,26 @@ def nor_diff_face(video_path, width=492, height=492):
         next_faces = utils.detect_face(next_frame)
         if pre_faces.size != 0 and next_faces.size != 0:
             for (x1, y1, w1, h1), (x2, y2, w2, h2) in zip(pre_faces, next_faces):
-                # h1 = min(int(1.6*h1), (frame_height - y1))
-                # h2 = min(int(1.6*h2), (frame_height - y2))
+                h1 = min(int(1.6*h1), (frame_height - y1))
+                h2 = min(int(1.6*h2), (frame_height - y2))
                 p_frame = pre_frame[y1:y1+h1, x1:x1+w1]
                 n_frame = next_frame[y2:y2 + h2, x2:x2 + w2]
                 pre_face = cv2.resize(p_frame,(width,height), interpolation=cv2.INTER_CUBIC)
                 next_face = cv2.resize(n_frame, (width, height), interpolation=cv2.INTER_CUBIC)
                 #cv2.imwrite(('./precessed_data'+str(idx)+'.jpg'),frame)
-                diff = next_face - pre_face
+                diff = np.subtract(next_face, pre_face)
                 mean = cv2.add(next_face>>1 , pre_face>>1)
-                re = diff / mean
+                re = np.true_divide(diff, mean, dtype=np.float32)
+                re[re == np.inf] = 0
+                re = np.nan_to_num(re)
                 ########### wait to implement ##############################
                 re = utils.rescale_image(re, deviation=3.0)
                 ############################################################
-                #print(diff)
+                #print(re)
                 # cv2.imshow("pre",pre_face)
                 # cv2.imshow("next", next_face)
                 #cv2.imshow("diff", diff)
-                # cv2.imshow("mean", mean)
+                #cv2.imshow("mean", mean)
                 # cv2.imshow("re", re)
                 # cv2.waitKey(0)
                 yield re
@@ -100,14 +102,16 @@ def crop_resize_face(video_path, width=492, height=492):
 
 
 def get_sample(frame_iterator, diff_iterator, label_paths):
-    with open(label_paths, 'r') as f:
-        lines = f.readlines()
+    # with open(label_paths, 'r') as f:
+    #     lines = f.readlines()
     skip_step = PLE_SAMPLE_RATE / FRAME_RATE
+    labels = utils.cvt_labels(label_paths, skip_step)
     idx = 0
     while idx < (FRAME_RATE*VIDEO_DUR) :
         frame = next(frame_iterator)
         diff = next(diff_iterator)
-        label = float(lines[math.floor(idx*skip_step)])
+        label = float(labels[idx])
+        #label = float(lines[math.floor(idx*skip_step)])
         idx+=1
         yield (frame, diff, label)
 
@@ -118,12 +122,15 @@ def get_batch(iterator, batch_size):
         frame_batch = []
         diff_batch = []
         label_batch = []
-        for i in range(batch_size):
-            frame, diff, label = next(iterator)
-            frame_batch.append(frame)
-            diff_batch.append(diff)
-            label_batch.append(label)
-        yield frame_batch, diff_batch, label_batch
+        try:
+            for i in range(batch_size):
+                frame, diff, label = next(iterator)
+                frame_batch.append(frame)
+                diff_batch.append(diff)
+                label_batch.append(label)
+            yield frame_batch, diff_batch, label_batch
+        except Exception:
+            pass
 
 
 if __name__ == '__main__':
@@ -135,13 +142,13 @@ if __name__ == '__main__':
     while True:
         frames, diffs, labels = next(batch_gen)
         idx=0
-        for frame, diff, label in zip(frames, diffs, labels):
-            # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
-            # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
-            idx+=1
-            cv2.imshow('face', frame)
-            cv2.imshow('diff', diff)
-            print(label)
-            cv2.waitKey(0)
+        # for frame, diff, label in zip(frames, diffs, labels):
+        #     # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
+        #     # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
+        #     idx+=1
+        #     cv2.imshow('face', frame)
+        #     cv2.imshow('diff', diff)
+        #     print(label)
+        #     cv2.waitKey(0)
     ######################################################
 
