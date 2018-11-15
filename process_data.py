@@ -28,7 +28,7 @@ def nor_diff_face(video_path, width=492, height=492):
     frame_height = int(capture.get(4))
     nframe = int(capture.get(7))
 
-    for idx in range(nframe):
+    for idx in range(nframe - 1):
         print("reading in frame " + str(idx) + "," + str(idx + 1))
         if idx == 0:
             rd, pre_frame = capture.read()
