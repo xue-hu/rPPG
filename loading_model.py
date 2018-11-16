@@ -15,9 +15,10 @@ EXPECTED_BYTES = 534904783
 
 
 class NnModel(object):
-    def __init__(self, img, diff):
+    def __init__(self, img, diff, keep_prob):
         self.input_img = img
         self.input_diff = diff
+        self.keep_prob = keep_prob
         utils.download(VGG_DOWNLOAD_LINK, VGG_FILENAME, EXPECTED_BYTES)
         self.vgg = scipy.io.loadmat(VGG_FILENAME)['layers']
         self.mean_pixels = np.array([123.68, 116.779, 103.939]).reshape((1, 1, 1, 3))
@@ -37,8 +38,8 @@ class NnModel(object):
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable("weight", dtype=tf.float32, initializer=w_init)
             b = tf.get_variable("bias", dtype=tf.float32, initializer=b_init)
-        conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
-        out = tf.nn.relu((conv + b), name=scope.name)
+            conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
+            out = tf.nn.relu((conv + b), name=scope.name)
         setattr(self, (stream_name + '_' + lyr_name), out)
 
     def conv2d_tahn(self, pre_lyr, lyr_idx, lyr_name, stream_name='d'):
@@ -46,8 +47,8 @@ class NnModel(object):
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable("weight", dtype=tf.float32, initializer=w_init)
             b = tf.get_variable("bias", dtype=tf.float32, initializer=b_init)
-        conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
-        out = tf.nn.tanh((conv + b), name=scope.name)
+            conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
+            out = tf.nn.tanh((conv + b), name=scope.name)
         setattr(self, (stream_name + '_' + lyr_name), out)
 
     # def regression_output_layer(self,pre_lyr, lyr_name):
@@ -74,11 +75,14 @@ class NnModel(object):
         with tf.variable_scope(sta_lyr_name, reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal([1, 1, depth, 1]))
             b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros([1, ]))
-        conv = tf.nn.conv2d(sta_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
-        l1_norm = tf.norm(conv, ord=1)
-        mask = width * height * tf.nn.sigmoid(conv + b, name='mask') / (2.0 * l1_norm)
-        out = tf.multiply(mask, dy_lyr, name="masked_feat")
+            conv = tf.nn.conv2d(sta_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
+            l1_norm = tf.norm(conv, ord=1)
+            mask = width * height * tf.nn.sigmoid(conv + b, name='mask') / (2.0 * l1_norm)
+            out = tf.multiply(mask, dy_lyr, name="masked_feat")
         dy_lyr = out
+
+    def dropout_layer(self, dy_lyr):
+        dy_lyr = tf.nn.dropout(dy_lyr, self.keep_prob)
 
     def two_stream_vgg_load(self):
         print("begin to construct two stream vgg......")
@@ -90,6 +94,8 @@ class NnModel(object):
         self.attention_layer(self.d_conv1_2, self.s_conv1_2, 'd_conv1_2', 's_conv1_2')
         self.avgpool(self.d_conv1_2, 'pool1')
         self.avgpool(self.s_conv1_2, 'pool1', stream_name='s')
+        self.dropout_layer(self.d_pool1)
+
 
         self.conv2d_relu(self.d_pool1, 5, 'conv2_1')
         self.conv2d_relu(self.d_conv2_1, 7, 'conv2_2')
@@ -98,6 +104,7 @@ class NnModel(object):
         self.attention_layer(self.d_conv2_2, self.s_conv2_2, 'd_conv2_2', 's_conv2_2')
         self.avgpool(self.d_conv2_2, 'pool2')
         self.avgpool(self.s_conv2_2, 'pool2', stream_name='s')
+        self.dropout_layer(self.d_pool2)
 
         self.conv2d_relu(self.d_pool2, 10, 'conv3_1')
         self.conv2d_relu(self.d_conv3_1, 12, 'conv3_2')
@@ -110,6 +117,7 @@ class NnModel(object):
         self.attention_layer(self.d_conv3_4, self.s_conv3_4, 'd_conv3_4', 's_conv3_4')
         self.avgpool(self.d_conv3_4, 'pool3')
         self.avgpool(self.s_conv3_4, 'pool3', stream_name='s')
+        self.dropout_layer(self.d_pool3)
 
         self.conv2d_relu(self.d_pool3, 19, 'conv4_1')
         self.conv2d_relu(self.d_conv4_1, 21, 'conv4_2')
@@ -122,6 +130,7 @@ class NnModel(object):
         self.attention_layer(self.d_conv4_4, self.s_conv4_4, 'd_conv4_4', 's_conv4_4')
         self.avgpool(self.d_conv4_4, 'pool4')
         self.avgpool(self.s_conv4_4, 'pool4', stream_name='s')
+        self.dropout_layer(self.d_pool4)
 
         self.conv2d_relu(self.d_pool4, 28, 'conv5_1')
         self.conv2d_relu(self.d_conv5_1, 30, 'conv5_2')
@@ -133,9 +142,11 @@ class NnModel(object):
         self.conv2d_relu(self.s_conv5_3, 34, 'conv5_4', stream_name='s')
         self.attention_layer(self.d_conv5_4, self.s_conv5_4, 'd_conv5_4', 's_conv5_4')
         self.avgpool(self.d_conv5_4, 'pool5')
+        self.dropout_layer(self.d_pool5)
         # self.avgpool(self.s_conv5_4, 'pool5', stream_name='s')
 
         self.conv2d_relu(self.d_pool5, 37, 'fc6')
+        self.dropout_layer(self.fc6)
         self.conv2d_relu(self.d_fc6, 39, 'fc7')
         # self.regression_output_layer(self.fc7, 'fc8')
         # self.conv2d_relu(self.fc7, 41, 'fc8')
@@ -147,30 +158,37 @@ class NnModel(object):
         self.conv2d_relu(self.input_diff, 0, 'conv1_1')
         self.conv2d_relu(self.d_conv1_1, 2, 'conv1_2')
         self.avgpool(self.d_conv1_2, 'pool1')
+        self.dropout_layer(self.d_pool1)
 
         self.conv2d_relu(self.d_pool1, 5, 'conv2_1')
         self.conv2d_relu(self.d_conv2_1, 7, 'conv2_2')
         self.avgpool(self.d_conv2_2, 'pool2')
+        self.dropout_layer(self.d_pool2)
 
         self.conv2d_relu(self.d_pool2, 10, 'conv3_1')
         self.conv2d_relu(self.d_conv3_1, 12, 'conv3_2')
         self.conv2d_relu(self.d_conv3_2, 14, 'conv3_3')
         self.conv2d_relu(self.d_conv3_3, 16, 'conv3_4')
         self.avgpool(self.d_conv3_4, 'pool3')
+        self.dropout_layer(self.d_pool3)
 
         self.conv2d_relu(self.d_pool3, 19, 'conv4_1')
         self.conv2d_relu(self.d_conv4_1, 21, 'conv4_2')
         self.conv2d_relu(self.d_conv4_2, 23, 'conv4_3')
         self.conv2d_relu(self.d_conv4_3, 25, 'conv4_4')
         self.avgpool(self.d_conv4_4, 'pool4')
+        self.dropout_layer(self.d_pool4)
 
         self.conv2d_relu(self.d_pool4, 28, 'conv5_1')
+        #self.conv2d_relu(self.d_pool3, 28, 'conv5_1')
         self.conv2d_relu(self.d_conv5_1, 30, 'conv5_2')
         self.conv2d_relu(self.d_conv5_2, 32, 'conv5_3')
         self.conv2d_relu(self.d_conv5_3, 34, 'conv5_4')
         self.avgpool(self.d_conv5_4, 'pool5')
+        self.dropout_layer(self.d_pool5)
 
         self.conv2d_relu(self.d_pool5, 37, 'fc6')
+        self.dropout_layer(self.d_fc6)
         self.conv2d_relu(self.d_fc6, 39, 'fc7')
         # self.regression_output_layer(self.fc7, 'fc8')
         # self.conv2d_relu(self.fc7, 41, 'fc8')

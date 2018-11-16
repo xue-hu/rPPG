@@ -84,7 +84,7 @@ def crop_resize_face(video_path, width=492, height=492):
     framerate = capture.get(5)
     nframe = int(capture.get(7))
 
-    for idx in range(nframe):
+    for idx in range(nframe - 1):
         print("reading in frame " + str(idx))
         rd, frame = capture.read()
         if not rd:

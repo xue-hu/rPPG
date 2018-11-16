@@ -13,9 +13,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 NUM_LABELS = 3862
 TRAIN_VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
-TRAIN_LABEL_PATHS = ['D:\PycharmsProject\yutube8M\data\ple.txt']
+TRAIN_LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 TEST_VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
-TEST_LABEL_PATHS = ['D:\PycharmsProject\yutube8M\data\ple.txt']
+TEST_LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 
 
 class VideoAnalysis(object):
@@ -29,7 +29,7 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.lr = 0.1
-        self.batch_size = 16
+        self.batch_size = 2
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 1
 
@@ -55,9 +55,11 @@ class VideoAnalysis(object):
                                         shape=[self.batch_size, self.width, self.height, 3])
             self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff',
                                          shape=[self.batch_size, self.width, self.height, 3])
-        self.model = loading_model.NnModel(self.input_img, self.input_diff)
-        #self.model.vgg_load()
-        self.model.two_stream_vgg_load()
+        with tf.name_scope('dropout'):
+            self.keep_prob = tf.placeholder(dtype=tf.float32, name='dropout_prob', shape=[])
+        self.model = loading_model.NnModel(self.input_img, self.input_diff, self.keep_prob)
+        self.model.vgg_load()
+        #self.model.two_stream_vgg_load()
 
     def inference(self):
         out = self.model.d_fc7
@@ -65,8 +67,8 @@ class VideoAnalysis(object):
         with tf.variable_scope('fc8', reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal(out.shape))
             b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros([self.batch_size, ]))
-        z = tf.reduce_sum(tf.multiply(out, w)) + b
-        self.pred = tf.nn.relu(z, name=scope.name)
+            z = tf.reduce_sum(tf.multiply(out, w)) + b
+            self.pred = tf.nn.relu(z, name=scope.name)
 
     ################################################
 
@@ -118,9 +120,11 @@ class VideoAnalysis(object):
                     #     print(label)
                     #     cv2.waitKey(0)
                     ############################################
-                    loss, _, summary = sess.run([self.loss, self.opt, summary_op], feed_dict={self.input_img: frames,
-                                                                                              self.input_diff: diffs,
-                                                                                              self.labels: labels})
+                    loss, _, summary = sess.run([self.loss, self.opt, summary_op],
+                                                feed_dict={self.input_img: frames,
+                                                           self.input_diff: diffs,
+                                                           self.labels: labels,
+                                                           self.keep_prob: 0.9})
                     total_loss += loss
                     n_batch += 1
                     writer.add_summary(summary, global_step=step)
@@ -146,7 +150,9 @@ class VideoAnalysis(object):
                     frames, diffs, labels = next(test_gen)
                     accuracy, summary = sess.run([self.accuracy, summary_op],
                                                  feed_dict={self.input_img: frames,
-                                                            self.input_diff: diffs, self.labels: labels})
+                                                            self.input_diff: diffs,
+                                                            self.labels: labels,
+                                                            self.keep_prob: 1})
                     total_accuracy += accuracy
                     n_test += 1
                     writer.add_summary(summary, global_step=step)
@@ -175,12 +181,12 @@ class VideoAnalysis(object):
 
 if __name__ == '__main__':
     ############using remote dataset######################################################
-    train_prob_ids= [2,4]
-    test_prob_ids = [3]
-    tr_vd_paths, tr_lb_paths = utils.create_file_paths(train_prob_ids)
-    te_vd_paths, te_lb_paths = utils.create_file_paths(test_prob_ids)
-    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
+    # train_prob_ids= [2]
+    # test_prob_ids = [3]
+    # tr_vd_paths, tr_lb_paths = utils.create_file_paths(train_prob_ids)
+    # te_vd_paths, te_lb_paths = utils.create_file_paths(test_prob_ids)
+    # model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
     ######################################################################################
-    #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
+    model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
     model.build_graph()
     model.train(10)
