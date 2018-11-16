@@ -28,7 +28,7 @@ class VideoAnalysis(object):
         self.test_label_paths = test_label_paths
         self.width = img_width
         self.height = img_height
-        self.lr = 0.08
+        self.lr = 0.1
         self.batch_size = 16
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 1
@@ -50,9 +50,10 @@ class VideoAnalysis(object):
     #     self.test_gen = self.get_data(test_video_path, test_label_path)
 
     def loading_model(self):
-        self.input_img = tf.placeholder(dtype=tf.float32, name='input_img',
+        with tf.name_scope('Input'):
+            self.input_img = tf.placeholder(dtype=tf.float32, name='input_img',
                                         shape=[self.batch_size, self.width, self.height, 3])
-        self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff',
+            self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff',
                                          shape=[self.batch_size, self.width, self.height, 3])
         self.model = loading_model.NnModel(self.input_img, self.input_diff)
         #self.model.vgg_load()
@@ -84,7 +85,7 @@ class VideoAnalysis(object):
 
     def optimizer(self):
         print("crteate optimizer.....")
-        self.opt = tf.train.AdamOptimizer(self.lr).minimize(self.loss, global_step=self.gstep)
+        self.opt = tf.train.AdadeltaOptimizer(self.lr).minimize(self.loss, global_step=self.gstep)
 
     def create_summary(self):
         print("crteate summary.....")
@@ -100,7 +101,7 @@ class VideoAnalysis(object):
         self.evaluation()
         self.optimizer()
 
-    def train_one_epoch(self, sess, writer, saver, summary_op, epoch):
+    def train_one_epoch(self, sess, writer, saver, summary_op, epoch, step):
         total_loss = 0
         n_batch = 0
         start_time = time.time()
@@ -122,16 +123,19 @@ class VideoAnalysis(object):
                                                                                               self.labels: labels})
                     total_loss += loss
                     n_batch += 1
+                    writer.add_summary(summary, global_step=step)
+                    step += 1
                     print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
             except tf.errors.OutOfRangeError:
                 pass
         print('Average loss at epoch {0}: {1}'.format(epoch, total_loss / n_batch))
         print('Took:{0} seconds'.format(time.time() - start_time))
         if epoch % self.skip_step == 0:
-            writer.add_summary(summary, global_step=self.gstep)
+            #writer.add_summary(summary, global_step=step)
             saver.save(sess, 'checkpoint_dict/VideoAnalysis', global_step=self.gstep)
+        return step
 
-    def eval_once(self, sess, writer, summary_op, epoch):
+    def eval_once(self, sess, writer, summary_op, epoch, step):
         print("begin to evaluate.....")
         total_accuracy = 0
         n_test = 0
@@ -145,10 +149,11 @@ class VideoAnalysis(object):
                                                             self.input_diff: diffs, self.labels: labels})
                     total_accuracy += accuracy
                     n_test += 1
+                    writer.add_summary(summary, global_step=step)
             except tf.errors.OutOfRangeError:
                 pass
         print('Accuracy at epoch {0}: {1}'.format(epoch, total_accuracy / n_test))
-        writer.add_summary(summary, global_step=self.gstep)
+
 
     def train(self, n_epoch):
         print("begin to train.....")
@@ -159,11 +164,12 @@ class VideoAnalysis(object):
             print("computational graph saved.")
             saver = tf.train.Saver()
             summary_op = self.create_summary()
+            step = self.gstep.eval()
             # if tf.train.checkpoint_exists('./checkpoint'):
             #     saver.restore(sess, './checkpoint')
             for epoch in range(n_epoch):
-                self.train_one_epoch(sess, writer, saver, summary_op, epoch)
-                self.eval_once(sess, writer, summary_op, epoch)
+                step = self.train_one_epoch(sess, writer, saver, summary_op, epoch, step)
+                self.eval_once(sess, writer, summary_op, epoch, step)
             writer.close()
 
 
