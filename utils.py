@@ -6,9 +6,12 @@ import urllib
 import PIL
 from PIL import ImageOps, Image
 import numpy as np
+import pandas as pd
 import cv2
 import struct
 import math
+
+VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 
 
 def download(down_link, file_path, expected_bytes):
@@ -21,7 +24,50 @@ def download(down_link, file_path, expected_bytes):
     print("successfully downloaded.")
 
 
-def rescale_image(img, mean=0, deviation=1.0):
+def compute_meanstd(video_paths):
+    for v_path in video_paths:
+        path = v_path.split('/')
+        prob_id = path[4]
+        cond = path[5].split('_')[0]
+        print(prob_id)
+        print(cond)
+        col = []
+        capture = cv2.VideoCapture()
+        capture.release()
+        ##########WAIT TO CHANGE##############
+        capture.open(v_path)
+        ######################################
+        if not capture.isOpened():
+            return -1
+        nframe = int(capture.get(7))
+        mean = 0
+        dev = 0
+        for idx in range(nframe):
+            rd, frame = capture.read()
+            f_mean = np.mean(frame, axis=(0, 1))
+            mean += np.true_divide(f_mean, nframe)
+            f_dev = np.std(frame, axis=(0,1))**2
+            dev += np.true_divide(f_dev, nframe)
+            idx += 1
+        stddev = np.sqrt(dev)
+        capture.release()
+        print(mean)
+        print(stddev)
+        col.append((mean, stddev))
+    dataframe = pd.DataFrame({cond: col})
+    dataframe.to_csv('MeanStddev.csv', mode='a+', index=False)
+    print('done.')
+
+
+
+def rescale_frame(img, mean=0, dev=1.0):
+    # img = img - np.array([123.68, 116.779, 103.939]).reshape((1, 1, 3))
+    # img = np.true_divide(img, dev)
+    return img
+
+
+def clip_dframe(img, mean=0, deviation=1.0):
+    # img = img - np.array([123.68, 116.779, 103.939]).reshape((1, 1, 3))
     return img
 
 
@@ -75,13 +121,13 @@ def cvt_labels(label_path, skip_step, data_len=8):
     return labels
 
 
-def create_file_paths(probs):
+def create_file_paths(probs, cond='lighting', cond_typ=0):
     src_path = '/Vitalcam_Dataset/07_Datenbank_Smarthome/Testaufnahmen/Proband'
     conditions = {'lighting': ['/101_natural_lighting', '/102_artificial_lighting',
                                '/103_abrupt_changing_lighting', '/104_dim_lighting_auto_exposure',
                                '/106_green_lighting', '/107_infrared_lighting'],
-                  'movement': ['/202_scale_movement', '/203_translation_movement',
-                               '/204_writing', '/201_shouldercheck']}
+                  'movement': ['/201_shouldercheck', '/202_scale_movement', '/203_translation_movement',
+                               '/204_writing']}
     video_name = '/Logitech HD Pro Webcam C920.avi'
     label_name = '/synced_Logitech HD Pro Webcam C920/'
     sgn_typ = ['1_EKG-AUX.bin', '5_Pleth.bin', '6_Pulse.bin']
@@ -91,8 +137,8 @@ def create_file_paths(probs):
 
     for i in probs:
         prob_id = str(i) if (i > 9) else ('0' + str(i))
-        video_path = src_path + prob_id + conditions['lighting'][0] + video_name
-        label_path = src_path + prob_id + conditions['lighting'][0]+label_name + sgn_typ[1]
+        video_path = src_path + prob_id + conditions[cond][cond_typ] + video_name
+        label_path = src_path + prob_id + conditions[cond][cond_typ] + label_name + sgn_typ[1]
         video_paths.append(video_path)
         label_paths.append(label_path)
     # print(video_paths)
@@ -101,12 +147,14 @@ def create_file_paths(probs):
 
 
 if __name__ == '__main__':
-    vd, lb = create_file_paths([1, 10])
-    for v, l in zip(vd, lb):
-        print(os.path.exists(v))
-        print(v)
-        print(os.path.exists(l))
-        print(l)
+    for cond in ['lighting','movement']:
+        if cond == 'lighting':
+            n = 6
+        else:
+            n = 4
+        for i in range(n):
+            vd, lb = create_file_paths(range(1,27), cond=cond, cond_typ=i)
+            compute_meanstd(vd)
     # li = cvt_labels(1,8)
     # for i in li:
     #     print(i)

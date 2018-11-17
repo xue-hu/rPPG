@@ -16,10 +16,11 @@ VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi
 LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 
 
-def nor_diff_face(video_path, width=492, height=492):
+def nor_diff_face(video_path, width=256, height=256):
     capture = cv2.VideoCapture()
     capture.release()
     capture.open(video_path)
+    #mean, dev = utils.compute_meanstd(video_path)
     if not capture.isOpened():
         return -1
     # frame_width = int(capture.get(3))
@@ -52,13 +53,16 @@ def nor_diff_face(video_path, width=492, height=492):
                 pre_face = cv2.resize(p_frame, (width, height), interpolation=cv2.INTER_CUBIC)
                 next_face = cv2.resize(n_frame, (width, height), interpolation=cv2.INTER_CUBIC)
                 # cv2.imwrite(('./precessed_data'+str(idx)+'.jpg'),frame)
+                #####默认类型uint8 无负数 需转换成int16 有必要吗######################################
                 diff = np.subtract(next_face, pre_face)
                 mean = cv2.add(next_face >> 1, pre_face >> 1)
                 re = np.true_divide(diff, mean, dtype=np.float32)
                 re[re == np.inf] = 0
                 re = np.nan_to_num(re)
+                re = utils.rescale_frame(re)
                 ########### wait to implement ##############################
-                re = utils.rescale_image(re, deviation=3.0)
+                re = utils.clip_dframe(re, deviation=3.0)
+
                 ############################################################
                 # print(re)
                 # cv2.imshow("pre",pre_face)
@@ -71,10 +75,11 @@ def nor_diff_face(video_path, width=492, height=492):
     capture.release()
 
 
-def crop_resize_face(video_path, width=492, height=492):
+def crop_resize_face(video_path, width=256, height=256):
     capture = cv2.VideoCapture()
     capture.release()
     capture.open(video_path)
+    #mean, dev = utils.compute_meanstd(video_path)
     if not capture.isOpened():
         return -1
     else:
@@ -99,8 +104,10 @@ def crop_resize_face(video_path, width=492, height=492):
                 h = min(int(1.6 * h), (frame_height - y))
                 frame = frame[y:y + h, x:x + w]
                 frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC)
-                frame = utils.rescale_image(frame)
-                # cv2.imwrite(('./precessed_data'+str(idx)+'.jpg'),frame)
+                frame = utils.rescale_frame(frame)
+                # cv2.imshow('frame', frame)
+                # cv2.waitKey(0)
+                #cv2.imwrite(('./'+str(idx)+'.jpg'),frame)
                 # frame = np.expand_dims(frame, 0)
                 yield frame
     capture.release()
@@ -139,8 +146,11 @@ def get_batch(iterator, batch_size):
 
 if __name__ == '__main__':
     ##########batched labeled-samples######################
-    v_paths, l_paths = utils.create_file_paths([2,3])
-    for v_path, l_path in zip(v_paths, l_paths):
+    # v_paths, l_paths = utils.create_file_paths([2,3])
+    # for v_path, l_path in zip(v_paths, l_paths):
+    #######################################################
+    for v_path, l_path in zip(VIDEO_PATHS, LABEL_PATHS):
+        print(v_path)
         frame_gen = crop_resize_face(v_path)
         diff_gen = nor_diff_face(v_path)
         sample_gen = get_sample(frame_gen, diff_gen, l_path)
@@ -152,8 +162,8 @@ if __name__ == '__main__':
                 # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
                 # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
                 idx += 1
-                #cv2.imshow('face', frame)
-                #cv2.imshow('diff', diff)
+                cv2.imshow('face', frame)
+                cv2.imshow('diff', diff)
                 print(label)
-                #cv2.waitKey(0)
+                cv2.waitKey(0)
     ######################################################
