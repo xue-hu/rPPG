@@ -6,7 +6,7 @@ import urllib
 import PIL
 from PIL import ImageOps, Image
 import numpy as np
-import pandas as pd
+import pickle
 import cv2
 import struct
 import math
@@ -42,7 +42,7 @@ def compute_meanstd(video_paths):
         nframe = int(capture.get(7))
         mean = 0
         dev = 0
-        for idx in range(nframe):
+        for idx in range(10):
             rd, frame = capture.read()
             f_mean = np.mean(frame, axis=(0, 1))
             mean += np.true_divide(f_mean, nframe)
@@ -54,9 +54,8 @@ def compute_meanstd(video_paths):
         print(mean)
         print(stddev)
         col.append((mean, stddev))
-    dataframe = pd.DataFrame({cond: col})
-    dataframe.to_csv('MeanStddev.csv', mode='a+', index=False)
-    print('done.')
+    return cond, col
+
 
 
 
@@ -147,14 +146,20 @@ def create_file_paths(probs, cond='lighting', cond_typ=0):
 
 
 if __name__ == '__main__':
+    dict = {}
     for cond in ['lighting','movement']:
         if cond == 'lighting':
             n = 6
         else:
             n = 4
         for i in range(n):
-            vd, lb = create_file_paths(range(1,27), cond=cond, cond_typ=i)
-            compute_meanstd(vd)
+            vd, lb = create_file_paths(range(1,2), cond=cond, cond_typ=i)
+            con, col = compute_meanstd(vd)
+            dict[con] = col
+    print(dict)
+    with open('MeanStddev.pickle', 'wb') as f:
+        pickle.dump(dict, f)
+    f.close()
     # li = cvt_labels(1,8)
     # for i in li:
     #     print(i)
