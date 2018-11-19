@@ -25,13 +25,14 @@ def download(down_link, file_path, expected_bytes):
 
 
 def compute_meanstd(video_paths):
+    col = []
     for v_path in video_paths:
+        print(os.path.exists(v_path))
         path = v_path.split('/')
         prob_id = path[4]
         cond = path[5].split('_')[0]
-        print(prob_id)
         print(cond)
-        col = []
+        print(prob_id)
         capture = cv2.VideoCapture()
         capture.release()
         ##########WAIT TO CHANGE##############
@@ -42,7 +43,9 @@ def compute_meanstd(video_paths):
         nframe = int(capture.get(7))
         mean = 0
         dev = 0
-        for idx in range(10):
+        for idx in range(nframe):
+            if idx%100 == 0:
+                print(idx)
             rd, frame = capture.read()
             f_mean = np.mean(frame, axis=(0, 1))
             mean += np.true_divide(f_mean, nframe)
@@ -51,8 +54,6 @@ def compute_meanstd(video_paths):
             idx += 1
         stddev = np.sqrt(dev)
         capture.release()
-        print(mean)
-        print(stddev)
         col.append((mean, stddev))
     return cond, col
 
@@ -147,16 +148,17 @@ def create_file_paths(probs, cond='lighting', cond_typ=0):
 
 if __name__ == '__main__':
     dict = {}
+    con = ''
+    col = []
     for cond in ['lighting','movement']:
         if cond == 'lighting':
             n = 6
         else:
             n = 4
         for i in range(n):
-            vd, lb = create_file_paths(range(1,2), cond=cond, cond_typ=i)
+            vd, lb = create_file_paths(range(1,27), cond=cond, cond_typ=i)
             con, col = compute_meanstd(vd)
             dict[con] = col
-    print(dict)
     with open('MeanStddev.pickle', 'wb') as f:
         pickle.dump(dict, f)
     f.close()

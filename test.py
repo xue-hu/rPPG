@@ -10,4 +10,5 @@ import pickle
 # print(z.shape)
 with open('MeanStddev.pickle','rb') as file:
     re = pickle.load(file)
-print(re['102'])
+print(len(re['204']))
+print(re['202'][1])
