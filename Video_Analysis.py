@@ -29,9 +29,9 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.lr = 0.1
-        self.batch_size = 2
+        self.batch_size = 4
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
-        self.skip_step = 1
+        self.skip_step = 3600
 
     def get_data(self, video_paths, label_paths):
         print("create generator....")
@@ -58,19 +58,11 @@ class VideoAnalysis(object):
         with tf.name_scope('dropout'):
             self.keep_prob = tf.placeholder(dtype=tf.float32, name='dropout_prob', shape=[])
         self.model = loading_model.NnModel(self.input_img, self.input_diff, self.keep_prob)
-        self.model.vgg_load()
-        #self.model.two_stream_vgg_load()
+        #self.model.vgg_load()
+        self.model.two_stream_vgg_load()
 
     def inference(self):
-        out = self.model.d_fc7
-        #############create pred###########################
-        with tf.variable_scope('fc8', reuse=tf.AUTO_REUSE) as scope:
-            w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal(out.shape))
-            b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros([self.batch_size, ]))
-            z = tf.reduce_sum(tf.multiply(out, w)) + b
-            self.pred = tf.nn.relu(z, name=scope.name)
-
-    ################################################
+        self.pred = tf.reshape(self.model.output, [self.batch_size, ])
 
     def loss(self):
         print("crteate loss-Function.....")
@@ -130,13 +122,12 @@ class VideoAnalysis(object):
                     writer.add_summary(summary, global_step=step)
                     step += 1
                     print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
+                    if step % self.skip_step == 0:
+                        saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
             except tf.errors.OutOfRangeError:
                 pass
         print('Average loss at epoch {0}: {1}'.format(epoch, total_loss / n_batch))
         print('Took:{0} seconds'.format(time.time() - start_time))
-        if epoch % self.skip_step == 0:
-            #writer.add_summary(summary, global_step=step)
-            saver.save(sess, 'checkpoint_dict/VideoAnalysis', global_step=self.gstep)
         return step
 
     def eval_once(self, sess, writer, summary_op, epoch, step):
@@ -160,7 +151,6 @@ class VideoAnalysis(object):
                 pass
         print('Accuracy at epoch {0}: {1}'.format(epoch, total_accuracy / n_test))
 
-
     def train(self, n_epoch):
         print("begin to train.....")
         with tf.Session() as sess:
@@ -181,12 +171,24 @@ class VideoAnalysis(object):
 
 if __name__ == '__main__':
     ############using remote dataset######################################################
-    # train_prob_ids= [2]
-    # test_prob_ids = [3]
-    # tr_vd_paths, tr_lb_paths = utils.create_file_paths(train_prob_ids)
-    # te_vd_paths, te_lb_paths = utils.create_file_paths(test_prob_ids)
-    # model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
+    tr_vd_paths = []
+    tr_lb_paths = []
+    te_vd_paths = []
+    te_lb_paths = []
+    for cond in ['lighting','movement']:
+        if cond == 'lighting':
+            n = 6
+        else:
+            n = 4
+        for i in range(n):
+            tr_vd_path, tr_lb_path = utils.create_file_paths([2, 3], cond=cond, cond_typ=i)
+            te_vd_path, te_lb_path = utils.create_file_paths([4], cond=cond, cond_typ=i)
+            tr_vd_paths.append(tr_vd_path)
+            tr_lb_paths.append(tr_lb_path)
+            te_vd_paths.append(te_vd_path)
+            te_lb_paths.append(te_lb_path)
+    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
     ######################################################################################
-    model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
+    #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
     model.build_graph()
     model.train(10)

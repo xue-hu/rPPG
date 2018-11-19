@@ -16,16 +16,16 @@ VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi
 LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 
 
-def nor_diff_face(video_path, width=256, height=256):
+def nor_diff_face(video_path, width=112, height=112):
     capture = cv2.VideoCapture()
     capture.release()
     capture.open(video_path)
-    #mean, dev = utils.compute_meanstd(video_path)
     if not capture.isOpened():
         return -1
     # frame_width = int(capture.get(3))
     else:
         print("video opened. start to read in.....")
+    mean, dev = utils.get_meanstd(video_path)
     frame_height = int(capture.get(4))
     nframe = int(capture.get(7))
 
@@ -50,40 +50,38 @@ def nor_diff_face(video_path, width=256, height=256):
                 h2 = min(int(1.6 * h2), (frame_height - y2))
                 p_frame = pre_frame[y1:y1 + h1, x1:x1 + w1]
                 n_frame = next_frame[y2:y2 + h2, x2:x2 + w2]
-                pre_face = cv2.resize(p_frame, (width, height), interpolation=cv2.INTER_CUBIC)
-                next_face = cv2.resize(n_frame, (width, height), interpolation=cv2.INTER_CUBIC)
+                ######################suitable to use float? or just int8###############################################
+                pre_face = cv2.resize(p_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+                next_face = cv2.resize(n_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
                 # cv2.imwrite(('./precessed_data'+str(idx)+'.jpg'),frame)
-                #####默认类型uint8 无负数 需转换成int16 有必要吗######################################
                 diff = np.subtract(next_face, pre_face)
-                mean = cv2.add(next_face >> 1, pre_face >> 1)
-                re = np.true_divide(diff, mean, dtype=np.float32)
+                mean_fr = np.add(next_face / 2.0, pre_face / 2.0)
+                re = np.true_divide(diff, mean_fr, dtype=np.float32)
                 re[re == np.inf] = 0
                 re = np.nan_to_num(re)
-                re = utils.rescale_frame(re)
+                re = utils.rescale_frame(re, mean, dev)
                 ########### wait to implement ##############################
                 re = utils.clip_dframe(re, deviation=3.0)
-
                 ############################################################
-                # print(re)
                 # cv2.imshow("pre",pre_face)
                 # cv2.imshow("next", next_face)
                 # cv2.imshow("diff", diff)
-                # cv2.imshow("mean", mean)
-                # cv2.imshow("re", re)
-                # cv2.waitKey(0)
+                #cv2.imshow("mean", mean.astype(np.uint8))
+                #cv2.imshow("re", re)
+                #cv2.waitKey(0)
                 yield re
     capture.release()
 
 
-def crop_resize_face(video_path, width=256, height=256):
+def crop_resize_face(video_path, width=112, height=112):
     capture = cv2.VideoCapture()
     capture.release()
     capture.open(video_path)
-    #mean, dev = utils.compute_meanstd(video_path)
     if not capture.isOpened():
         return -1
     else:
         print("video opened. start to read in.....")
+    mean, dev = utils.get_meanstd(video_path)
     # frame_width = int(capture.get(3))
     frame_height = int(capture.get(4))
     framerate = capture.get(5)
@@ -103,8 +101,8 @@ def crop_resize_face(video_path, width=256, height=256):
                 # cv2.rectangle(frame, pt1, pt2, (255, 0, 0), 5, 8, 0)
                 h = min(int(1.6 * h), (frame_height - y))
                 frame = frame[y:y + h, x:x + w]
-                frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC)
-                frame = utils.rescale_frame(frame)
+                frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+                frame = utils.rescale_frame(frame, mean, dev)
                 # cv2.imshow('frame', frame)
                 # cv2.waitKey(0)
                 #cv2.imwrite(('./'+str(idx)+'.jpg'),frame)
@@ -117,7 +115,7 @@ def get_sample(frame_iterator, diff_iterator, label_paths):
     # with open(label_paths, 'r') as f:
     #     lines = f.readlines()
     skip_step = PLE_SAMPLE_RATE / FRAME_RATE
-    labels = utils.cvt_labels(label_paths, skip_step)
+    labels = utils.cvt_sensorSgn(label_paths, skip_step)
     idx = 0
     while idx < (FRAME_RATE * VIDEO_DUR):
         frame = next(frame_iterator)
