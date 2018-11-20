@@ -29,7 +29,7 @@ def detect_face(image):
     haar_scale = 1.1
     min_neighbors = 3
     haar_flags = 0
-    faceCascade = cv2.CascadeClassifier('haarcascade_frontalface_alt.xml')
+    faceCascade = cv2.CascadeClassifier('./haarcascade_frontalface_alt.xml')
     temp = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     cv2.equalizeHist(temp, temp)
@@ -53,6 +53,7 @@ def detect_face(image):
 def create_meanStd_file(video_paths, width=256, height=256):
     col = []
     for v_path in video_paths:
+        print(v_path)
         print(os.path.exists(v_path))
         path = v_path.split('/')
         prob_id = path[4]
@@ -75,16 +76,17 @@ def create_meanStd_file(video_paths, width=256, height=256):
                 print(idx)
             rd, frame = capture.read()
             faces = detect_face(frame)
+            print(faces)
             if faces.size != 0:
                 for (x, y, w, h) in faces:
                     h = min(int(1.6 * h), (frame_height - y))
                     frame = frame[y:y + h, x:x + w]
-                    frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC).as_type(np.float32)
+                    #frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+                    print(frame.shape)
                     f_mean = np.mean(frame, axis=(0, 1))
                     mean += np.true_divide(f_mean, nframe)
                     f_dev = np.std(frame, axis=(0, 1)) ** 2
                     dev += np.true_divide(f_dev, nframe)
-            idx += 1
         stddev = np.sqrt(dev)
         capture.release()
         col.append((mean, stddev))
@@ -172,7 +174,7 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
     return labels
 
 
-#if __name__ == '__main__':
+if __name__ == '__main__':
     #######################generate mean&std file####################################################
     dict = {}
     con = ''

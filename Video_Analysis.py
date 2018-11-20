@@ -124,7 +124,7 @@ class VideoAnalysis(object):
                     print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
                     if step % self.skip_step == 0:
                         saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
-            except tf.errors.OutOfRangeError:
+            except StopIteration:
                 pass
         print('Average loss at epoch {0}: {1}'.format(epoch, total_loss / n_batch))
         print('Took:{0} seconds'.format(time.time() - start_time))
@@ -147,7 +147,7 @@ class VideoAnalysis(object):
                     total_accuracy += accuracy
                     n_test += 1
                     writer.add_summary(summary, global_step=step)
-            except tf.errors.OutOfRangeError:
+            except StopIteration:
                 pass
         print('Accuracy at epoch {0}: {1}'.format(epoch, total_accuracy / n_test))
 
@@ -180,8 +180,8 @@ if __name__ == '__main__':
             n = 6
         else:
             n = 4
-        for i in range(n):
-            tr_vd_path, tr_lb_path = utils.create_file_paths([2, 3], cond=cond, cond_typ=i)
+        for i in range(1):
+            tr_vd_path, tr_lb_path = utils.create_file_paths([2], cond=cond, cond_typ=i)
             te_vd_path, te_lb_path = utils.create_file_paths([4], cond=cond, cond_typ=i)
             tr_vd_paths += tr_vd_path
             tr_lb_paths += tr_lb_path

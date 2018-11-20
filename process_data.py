@@ -37,6 +37,7 @@ def crop_resize_face(video_path, width=112, height=112):
         if not rd:
             return -1
         faces = utils.detect_face(frame)
+        print(faces)
         if faces.size != 0:
             for (x, y, w, h) in faces:
                 # Convert bounding box to two CvPoints
@@ -71,19 +72,18 @@ def nor_diff_face(video_path, width=112, height=112):
         print("reading in frame " + str(idx) + "," + str(idx + 1))
         if idx == 0:
             rd, pre_frame = capture.read()
-            pre_frame = utils.rescale_frame(frame, mean, dev)
             if not rd:
                 return -1
         else:
             pre_frame = next_frame
 
         rd, next_frame = capture.read()
-        next_frame = utils.rescale_frame(frame, mean, dev)
         if not rd:
             return -1
-        idx += 1
         pre_faces = utils.detect_face(pre_frame)
         next_faces = utils.detect_face(next_frame)
+        print(pre_faces.shape)
+        print(next_faces)
         if pre_faces.size != 0 and next_faces.size != 0:
             for (x1, y1, w1, h1), (x2, y2, w2, h2) in zip(pre_faces, next_faces):
                 h1 = min(int(1.6 * h1), (frame_height - y1))
@@ -117,12 +117,10 @@ def get_sample(diff_iterator, label_paths):
     #     lines = f.readlines()
     skip_step = PLE_SAMPLE_RATE / FRAME_RATE
     labels = utils.cvt_sensorSgn(label_paths, skip_step)
-    idx = 0
-    while idx < (FRAME_RATE * VIDEO_DUR):
+    for idx in range(int(FRAME_RATE * VIDEO_DUR) - 1 ):
         frame, diff = next(diff_iterator)
         label = float(labels[idx])
         # label = float(lines[math.floor(idx*skip_step)])
-        idx += 1
         yield (frame, diff, label)
 
 
@@ -131,15 +129,12 @@ def get_batch(iterator, batch_size):
         frame_batch = []
         diff_batch = []
         label_batch = []
-        try:
-            for i in range(batch_size):
-                frame, diff, label = next(iterator)
-                frame_batch.append(frame)
-                diff_batch.append(diff)
-                label_batch.append(label)
-            yield frame_batch, diff_batch, label_batch
-        except Exception:
-            pass
+        for i in range(batch_size):
+            frame, diff, label = next(iterator)
+            frame_batch.append(frame)
+            diff_batch.append(diff)
+            label_batch.append(label)
+        yield frame_batch, diff_batch, label_batch
 
 
 if __name__ == '__main__':
