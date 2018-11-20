@@ -28,16 +28,16 @@ class VideoAnalysis(object):
         self.test_label_paths = test_label_paths
         self.width = img_width
         self.height = img_height
-        self.lr = 0.1
+        self.lr = 0.8
         self.batch_size = 64
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 3600
 
     def get_data(self, video_paths, label_paths):
         print("create generator....")
-        frame_gen = process_data.crop_resize_face(video_paths, self.width, self.height)
+        #frame_gen = process_data.crop_resize_face(video_paths, self.width, self.height)
         diff_gen = process_data.nor_diff_face(video_paths, self.width, self.height)
-        sample_gen = process_data.get_sample(frame_gen, diff_gen, label_paths)
+        sample_gen = process_data.get_sample(diff_gen, label_paths)
         batch_gen = process_data.get_batch(sample_gen, self.batch_size)
         return batch_gen
 
