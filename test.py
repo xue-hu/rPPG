@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import pickle
-
-a = np.asarray([[1,2],[3,4]])
-print(a.shape[1].type)
+with open('MeanStddev.pickle', 'rb') as f:
+    m = pickle.load(f)
+print(m['203'][0])
+print(len(m['101']))

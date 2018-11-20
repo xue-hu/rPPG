@@ -84,7 +84,7 @@ def nor_diff_face(video_path, width=112, height=112):
         next_faces = utils.detect_face(next_frame)
         print(pre_faces.shape)
         print(next_faces)
-        if pre_faces.size != 0 and next_faces.size != 0:
+        if len(pre_faces.size) != 0 and len(next_faces.size) != 0:
             for (x1, y1, w1, h1), (x2, y2, w2, h2) in zip(pre_faces, next_faces):
                 h1 = min(int(1.6 * h1), (frame_height - y1))
                 h2 = min(int(1.6 * h2), (frame_height - y2))
@@ -140,10 +140,10 @@ def get_batch(iterator, batch_size):
 
 if __name__ == '__main__':
     ##########batched labeled-samples######################
-    # v_paths, l_paths = utils.create_file_paths([2,3])
-    # for v_path, l_path in zip(v_paths, l_paths):
+     v_paths, l_paths = utils.create_file_paths([2,3])
+     for v_path, l_path in zip(v_paths, l_paths):
     #######################################################
-    for v_path, l_path in zip(VIDEO_PATHS, LABEL_PATHS):
+    #for v_path, l_path in zip(VIDEO_PATHS, LABEL_PATHS):
         print(v_path)
         diff_gen = nor_diff_face(v_path)
         sample_gen = get_sample(diff_gen, l_path)
