@@ -33,7 +33,6 @@ def crop_resize_face(video_path, width=112, height=112):
     for idx in range(nframe - 1):
         print("reading in frame " + str(idx))
         rd, frame = capture.read()
-        frame = utils.rescale_frame(frame, mean, dev)
         if not rd:
             return -1
         faces = utils.detect_face(frame)
@@ -46,6 +45,7 @@ def crop_resize_face(video_path, width=112, height=112):
                 # cv2.rectangle(frame, pt1, pt2, (255, 0, 0), 5, 8, 0)
                 h = min(int(1.6 * h), (frame_height - y))
                 frame = frame[y:y + h, x:x + w]
+                #frame = utils.rescale_frame(frame, mean, dev)
                 frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
                 # cv2.imshow('frame', frame)
                 # cv2.waitKey(0)
@@ -90,6 +90,9 @@ def nor_diff_face(video_path, width=112, height=112):
                 h2 = min(int(1.6 * h2), (frame_height - y2))
                 p_frame = pre_frame[y1:y1 + h1, x1:x1 + w1]
                 n_frame = next_frame[y2:y2 + h2, x2:x2 + w2]
+                # cv2.imshow("pre", p_frame)
+                # cv2.imshow("next", n_frame)
+                # cv2.waitKey(0)
                 ###################### wait to check ###############################################
                 pre_face = cv2.resize(p_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
                 next_face = cv2.resize(n_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
@@ -102,8 +105,6 @@ def nor_diff_face(video_path, width=112, height=112):
                 ########### wait to implement ########################################################
                 re = utils.clip_dframe(re, deviation=3.0)
                 ########################################################################################
-                # cv2.imshow("pre",pre_face)
-                # cv2.imshow("next", next_face)
                 # cv2.imshow("diff", diff)
                 #cv2.imshow("mean", mean.astype(np.uint8))
                 #cv2.imshow("re", re)
@@ -117,7 +118,7 @@ def get_sample(diff_iterator, label_paths):
     #     lines = f.readlines()
     skip_step = PLE_SAMPLE_RATE / FRAME_RATE
     labels = utils.cvt_sensorSgn(label_paths, skip_step)
-    for idx in range(int(FRAME_RATE * VIDEO_DUR) - 1 ):
+    for idx in range(int(FRAME_RATE * VIDEO_DUR) - 1):
         frame, diff = next(diff_iterator)
         label = float(labels[idx])
         # label = float(lines[math.floor(idx*skip_step)])

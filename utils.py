@@ -192,6 +192,7 @@ if __name__ == '__main__':
         pickle.dump(dict, f)
     f.close()
     ###################################################################################################
+    #con, col = create_meanStd_file(VIDEO_PATHS)
     #############################check generated labels###########################################
     # li = cvt_labels(1,8)
     # for i in li:

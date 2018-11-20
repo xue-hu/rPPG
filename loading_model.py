@@ -99,7 +99,7 @@ class NnModel(object):
             out = tf.multiply(mask, dy_lyr, name="masked_feat")
             # print(dy_lyr_name)
             # print(out.shape)
-        dy_lyr = out
+            setattr(self, ('atten_' + sta_lyr_name[2:]), out)
 
     def dropout_layer(self, dy_lyr):
         dy_lyr = tf.nn.dropout(dy_lyr, self.keep_prob)
@@ -112,7 +112,7 @@ class NnModel(object):
         self.conv2d_relu(self.input_img, 0, 'conv1_1', stream_name='s')
         self.conv2d_relu(self.s_conv1_1, 2, 'conv1_2', stream_name='s')
         self.attention_layer(self.d_conv1_2, self.s_conv1_2, 'd_conv1_2', 's_conv1_2')
-        self.avgpool(self.d_conv1_2, 'pool1')
+        self.avgpool(self.atten_conv1_2, 'pool1')
         self.avgpool(self.s_conv1_2, 'pool1', stream_name='s')
         self.dropout_layer(self.d_pool1)
 
@@ -121,7 +121,7 @@ class NnModel(object):
         self.conv2d_relu(self.s_pool1, 5, 'conv2_1', stream_name='s')
         self.conv2d_relu(self.s_conv2_1, 7, 'conv2_2', stream_name='s')
         self.attention_layer(self.d_conv2_2, self.s_conv2_2, 'd_conv2_2', 's_conv2_2')
-        self.avgpool(self.d_conv2_2, 'pool2')
+        self.avgpool(self.atten_conv2_2, 'pool2')
         self.avgpool(self.s_conv2_2, 'pool2', stream_name='s')
         self.dropout_layer(self.d_pool2)
 
@@ -134,8 +134,8 @@ class NnModel(object):
         self.conv2d_relu(self.s_conv3_2, 14, 'conv3_3', stream_name='s')
         self.conv2d_relu(self.s_conv3_3, 16, 'conv3_4', stream_name='s')
         self.attention_layer(self.d_conv3_4, self.s_conv3_4, 'd_conv3_4', 's_conv3_4')
-        self.avgpool(self.d_conv3_4, 'pool3')
-        self.avgpool(self.s_conv3_4, 'pool3', stream_name='s')
+        self.avgpool(self.atten_conv3_4, 'pool3')
+        #self.avgpool(self.s_conv3_4, 'pool3', stream_name='s')
         self.dropout_layer(self.d_pool3)
 
         # self.conv2d_relu(self.d_pool3, 19, 'conv4_1')
@@ -218,8 +218,8 @@ class NnModel(object):
 
 
 if __name__ == '__main__':
-    frame = cv2.imread('0.jpg').astype(np.float32)
-    diff = cv2.imread('1.jpg').astype(np.float32)
+    frame = cv2.imread('D:\PycharmsProject\yutube8M/0.jpg').astype(np.float32)
+    diff = cv2.imread('D:\PycharmsProject\yutube8M/1.jpg').astype(np.float32)
     frame = np.expand_dims(frame, 0)
     diff = np.expand_dims(diff, 0)
     model = NnModel(frame, diff, 1)
