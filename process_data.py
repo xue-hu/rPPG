@@ -69,7 +69,7 @@ def nor_diff_face(video_path, width=112, height=112):
                 #cv2.imshow("mean", mean.astype(np.uint8))
                 #cv2.imshow("re", re)
                 #cv2.waitKey(0)
-                yield re
+                yield pre_face, re
     capture.release()
 
 
@@ -118,8 +118,8 @@ def get_sample(frame_iterator, diff_iterator, label_paths):
     labels = utils.cvt_sensorSgn(label_paths, skip_step)
     idx = 0
     while idx < (FRAME_RATE * VIDEO_DUR):
-        frame = next(frame_iterator)
-        diff = next(diff_iterator)
+        #frame = next(frame_iterator)
+        frame, diff = next(diff_iterator)
         label = float(labels[idx])
         # label = float(lines[math.floor(idx*skip_step)])
         idx += 1

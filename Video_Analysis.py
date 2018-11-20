@@ -21,7 +21,7 @@ TEST_LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Web
 class VideoAnalysis(object):
     def __init__(self, train_video_paths, train_label_paths,
                  test_video_paths, test_label_paths,
-                 img_width=492, img_height=492):
+                 img_width=256, img_height=256):
         self.train_video_paths = train_video_paths
         self.train_label_paths = train_label_paths
         self.test_video_paths = test_video_paths
@@ -29,7 +29,7 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.lr = 0.1
-        self.batch_size = 4
+        self.batch_size = 64
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 3600
 
@@ -183,10 +183,10 @@ if __name__ == '__main__':
         for i in range(n):
             tr_vd_path, tr_lb_path = utils.create_file_paths([2, 3], cond=cond, cond_typ=i)
             te_vd_path, te_lb_path = utils.create_file_paths([4], cond=cond, cond_typ=i)
-            tr_vd_paths.append(tr_vd_path)
-            tr_lb_paths.append(tr_lb_path)
-            te_vd_paths.append(te_vd_path)
-            te_lb_paths.append(te_lb_path)
+            tr_vd_paths += tr_vd_path
+            tr_lb_paths += tr_lb_path
+            te_vd_paths += te_vd_path
+            te_lb_paths += te_lb_path
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
     ######################################################################################
     #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
