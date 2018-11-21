@@ -82,9 +82,10 @@ def nor_diff_face(video_path, width=112, height=112):
             return -1
         pre_faces = utils.detect_face(pre_frame)
         next_faces = utils.detect_face(next_frame)
-        print(pre_faces.shape)
-        print(next_faces)
-        if len(pre_faces.size) != 0 and len(next_faces.size) != 0:
+        if idx%100 == 0:
+            print(pre_faces.shape)
+            print(pre_faces)
+        if len(pre_faces) != 0 and len(next_faces) != 0:
             for (x1, y1, w1, h1), (x2, y2, w2, h2) in zip(pre_faces, next_faces):
                 h1 = min(int(1.6 * h1), (frame_height - y1))
                 h2 = min(int(1.6 * h2), (frame_height - y2))

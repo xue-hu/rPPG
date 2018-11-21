@@ -28,10 +28,10 @@ class VideoAnalysis(object):
         self.test_label_paths = test_label_paths
         self.width = img_width
         self.height = img_height
-        self.lr = 0.8
-        self.batch_size = 64
+        self.lr = 10.0
+        self.batch_size = 16
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
-        self.skip_step = 3600
+        self.skip_step = 3000
 
     def get_data(self, video_paths, label_paths):
         print("create generator....")
@@ -50,9 +50,10 @@ class VideoAnalysis(object):
     #     self.test_gen = self.get_data(test_video_path, test_label_path)
 
     def loading_model(self):
-        with tf.name_scope('Input'):
+        with tf.name_scope('Static_Input'):
             self.input_img = tf.placeholder(dtype=tf.float32, name='input_img',
                                         shape=[self.batch_size, self.width, self.height, 3])
+        with tf.name_scope('Dynamic_Input'):
             self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff',
                                          shape=[self.batch_size, self.width, self.height, 3])
         with tf.name_scope('dropout'):
@@ -171,24 +172,26 @@ class VideoAnalysis(object):
 
 if __name__ == '__main__':
     ############using remote dataset######################################################
-    tr_vd_paths = []
-    tr_lb_paths = []
-    te_vd_paths = []
-    te_lb_paths = []
-    for cond in ['lighting','movement']:
-        if cond == 'lighting':
-            n = 6
-        else:
-            n = 4
-        for i in range(1):
-            tr_vd_path, tr_lb_path = utils.create_file_paths([2], cond=cond, cond_typ=i)
-            te_vd_path, te_lb_path = utils.create_file_paths([4], cond=cond, cond_typ=i)
-            tr_vd_paths += tr_vd_path
-            tr_lb_paths += tr_lb_path
-            te_vd_paths += te_vd_path
-            te_lb_paths += te_lb_path
+#    tr_vd_paths = []
+#    tr_lb_paths = []
+#    te_vd_paths = []
+#    te_lb_paths = []
+#    for cond in ['lighting','movement']:
+#        if cond == 'lighting':
+#            n = 6
+#        else:
+#            n = 4
+#        for i in range(1):
+#            tr_vd_path, tr_lb_path = utils.create_file_paths([2], cond=cond, cond_typ=i)
+#            te_vd_path, te_lb_path = utils.create_file_paths([4], cond=cond, cond_typ=i)
+#            tr_vd_paths += tr_vd_path
+#            tr_lb_paths += tr_lb_path
+#            te_vd_paths += te_vd_path
+#            te_lb_paths += te_lb_path
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 3])
+    te_vd_paths, te_lb_paths = utils.create_file_paths([4])
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
     ######################################################################################
     #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
     model.build_graph()
-    model.train(10)
+    model.train(5)

@@ -76,7 +76,7 @@ def create_meanStd_file(video_paths, width=256, height=256):
                 print(idx)
             rd, frame = capture.read()
             faces = detect_face(frame)
-            print(faces)
+          #  print(faces)
             if len(faces) != 0 :
                 for (x, y, w, h) in faces:
                     h = min(int(1.6 * h), (frame_height - y))
@@ -176,22 +176,31 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
 
 if __name__ == '__main__':
     #######################generate mean&std file####################################################
+    #dict = {}
+    #con = ''
+    #col = []
+    #for cond in ['lighting','movement']:
+     #   if cond == 'lighting':
+      #      n = 6
+       # else:
+        #    n = 4
+       # for i in range(n):
+        #    vd, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+         #   con, col = create_meanStd_file(vd)
+          #  dict[con] = col
+#    with open('MeanStddev.pickle', 'wb') as f:
+ #       pickle.dump(dict, f)
+  #  f.close()
+    ###################################################################################################
     dict = {}
     con = ''
     col = []
-    for cond in ['lighting','movement']:
-        if cond == 'lighting':
-            n = 6
-        else:
-            n = 4
-        for i in range(n):
-            vd, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-            con, col = create_meanStd_file(vd)
-            dict[con] = col
+    vd, lb = create_file_paths(range(1, 27), cond='lighting', cond_typ=0)
+    con, col = create_meanStd_file(vd)
+    dict[con] = col
     with open('MeanStddev.pickle', 'wb') as f:
         pickle.dump(dict, f)
     f.close()
-    ###################################################################################################
     #con, col = create_meanStd_file(VIDEO_PATHS)
     #############################check generated labels###########################################
     # li = cvt_labels(1,8)

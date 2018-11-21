@@ -90,15 +90,15 @@ class NnModel(object):
     def attention_layer(self, dy_lyr, sta_lyr, dy_lyr_name, sta_lyr_name):
         _, width, height, depth = sta_lyr.shape.as_list()
         # print(width, height, depth)
-        with tf.variable_scope(sta_lyr_name, reuse=tf.AUTO_REUSE) as scope:
+        with tf.variable_scope('atten_'+sta_lyr_name[2:], reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal([1, 1, depth, 1]))
             b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros([1, ]))
             conv = tf.nn.conv2d(sta_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
             l1_norm = tf.norm(conv, ord=1)
             mask = width * height * tf.nn.sigmoid(conv + b, name='mask') / (2.0 * l1_norm)
             out = tf.multiply(mask, dy_lyr, name="masked_feat")
-            # print(dy_lyr_name)
-            # print(out.shape)
+            print('atten_'+sta_lyr_name[2:])
+            print(out.shape)
             setattr(self, ('atten_' + sta_lyr_name[2:]), out)
 
     def dropout_layer(self, dy_lyr):
