@@ -28,8 +28,8 @@ class VideoAnalysis(object):
         self.test_label_paths = test_label_paths
         self.width = img_width
         self.height = img_height
-        self.lr = 10.0
-        self.batch_size = 16
+        self.lr = 8.0
+        self.batch_size = 32
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 3000
 
@@ -76,6 +76,7 @@ class VideoAnalysis(object):
             diff = tf.abs(self.pred - self.labels)
             indicator = tf.where(diff < 10)
             self.accuracy = tf.truediv(tf.size(indicator), self.batch_size)
+            #self.accuracy = tf.losses.mean_squared_error(labels=self.labels, predictions=self.pred)/ self.batch_size
 
     def optimizer(self):
         print("crteate optimizer.....")
@@ -185,10 +186,10 @@ if __name__ == '__main__':
 #            tr_lb_paths += tr_lb_path
 #            te_vd_paths += te_vd_path
 #            te_lb_paths += te_lb_path
-    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 3, 4])
-    te_vd_paths, te_lb_paths = utils.create_file_paths([5])
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 3, 4, 5 , 6])
+    te_vd_paths, te_lb_paths = utils.create_file_paths([7])
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
     ######################################################################################
     #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
     model.build_graph()
-    model.train(3)
+    model.train(1)
