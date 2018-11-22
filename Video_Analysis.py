@@ -33,12 +33,11 @@ class VideoAnalysis(object):
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 3000
 
-    def get_data(self, video_paths, label_paths):
+    def get_data(self, video_paths, label_paths, clips):
         print("create generator....")
-        #frame_gen = process_data.crop_resize_face(video_paths, self.width, self.height)
-        diff_gen = process_data.nor_diff_face(video_paths, self.width, self.height)
-        sample_gen = process_data.get_sample(diff_gen, label_paths)
-        batch_gen = process_data.get_batch(sample_gen, self.batch_size)
+        #gen = process_data.nor_diff_clip(video_paths, width=self.width, height=self.height, clip=clip)
+        #sample_gen = process_data.get_sample(video_paths, label_paths, clip=clip, width=self.width, height=self.height)
+        batch_gen = process_data.get_batch(video_paths, label_paths, clips, self.batch_size, width=self.width, height=self.height)
         return batch_gen
 
     # def create_training_input(self, train_video_path, train_label_path):
@@ -100,33 +99,32 @@ class VideoAnalysis(object):
         total_loss = 0
         n_batch = 0
         start_time = time.time()
-        for tr_v, tr_l in zip(self.train_video_paths, self.train_label_paths):
-            train_gen = self.get_data(tr_v, tr_l)
-            try:
-                while True:
-                    print("epoch " + str(epoch + 1) + "-" + str(n_batch + 1))
-                    frames, diffs, labels = next(train_gen)
-                    ##########testing the generator##############
-                    # for frame, diff, label in zip(frames, diffs, labels):
-                    #     cv2.imshow('face', frame)
-                    #     cv2.imshow('diff', diff)
-                    #     print(label)
-                    #     cv2.waitKey(0)
-                    ############################################
-                    loss, _, summary = sess.run([self.loss, self.opt, summary_op],
-                                                feed_dict={self.input_img: frames,
-                                                           self.input_diff: diffs,
-                                                           self.labels: labels,
-                                                           self.keep_prob: 0.9})
-                    total_loss += loss
-                    n_batch += 1
-                    writer.add_summary(summary, global_step=step)
-                    step += 1
-                    print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
-                    if step % self.skip_step == 0:
-                        saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
-            except StopIteration:
-                pass
+        train_gen = self.get_data(self.train_video_paths, self.train_label_paths, [1])
+        try:
+            while True:
+                print("epoch " + str(epoch + 1) + "-" + str(n_batch + 1))
+                (frames, diffs, labels) = next(train_gen)
+                ##########testing the generator##############
+                # for frame, diff, label in zip(frames, diffs, labels):
+                #     cv2.imshow('face', frame)
+                #     cv2.imshow('diff', diff)
+                #     print(label)
+                #     cv2.waitKey(0)
+                ############################################
+                loss, _, summary = sess.run([self.loss, self.opt, summary_op],
+                                            feed_dict={self.input_img: frames,
+                                                       self.input_diff: diffs,
+                                                       self.labels: labels,
+                                                       self.keep_prob: 0.9})
+                total_loss += loss
+                n_batch += 1
+                writer.add_summary(summary, global_step=step)
+                step += 1
+                print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
+                if step % self.skip_step == 0:
+                    saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
+        except StopIteration:
+            pass
         print('Average loss at epoch {0}: {1}'.format(epoch, total_loss / n_batch))
         print('Took:{0} seconds'.format(time.time() - start_time))
         return step
@@ -135,21 +133,20 @@ class VideoAnalysis(object):
         print("begin to evaluate.....")
         total_accuracy = 0
         n_test = 0
-        for te_v, te_l in zip(self.test_video_paths, self.test_label_paths):
-            test_gen = self.get_data(te_v, te_l)
-            try:
-                while True:
-                    frames, diffs, labels = next(test_gen)
-                    accuracy, summary = sess.run([self.accuracy, summary_op],
-                                                 feed_dict={self.input_img: frames,
-                                                            self.input_diff: diffs,
-                                                            self.labels: labels,
-                                                            self.keep_prob: 1})
-                    total_accuracy += accuracy
-                    n_test += 1
-                    writer.add_summary(summary, global_step=step)
-            except StopIteration:
-                pass
+        test_gen = self.get_data(self.test_video_paths, self.test_label_paths, [1])
+        try:
+            while True:
+                frames, diffs, labels = next(test_gen)
+                accuracy, summary = sess.run([self.accuracy, summary_op],
+                                             feed_dict={self.input_img: frames,
+                                                        self.input_diff: diffs,
+                                                        self.labels: labels,
+                                                        self.keep_prob: 1})
+                total_accuracy += accuracy
+                n_test += 1
+                writer.add_summary(summary, global_step=step)
+        except StopIteration:
+            pass
         print('Accuracy at epoch {0}: {1}'.format(epoch, total_accuracy / n_test))
 
     def train(self, n_epoch):
@@ -188,10 +185,10 @@ if __name__ == '__main__':
 #            tr_lb_paths += tr_lb_path
 #            te_vd_paths += te_vd_path
 #            te_lb_paths += te_lb_path
-    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 3])
-    te_vd_paths, te_lb_paths = utils.create_file_paths([4])
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 3, 4])
+    te_vd_paths, te_lb_paths = utils.create_file_paths([5])
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
     ######################################################################################
     #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
     model.build_graph()
-    model.train(5)
+    model.train(3)

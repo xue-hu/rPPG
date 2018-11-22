@@ -77,7 +77,7 @@ def create_meanStd_file(video_paths, width=256, height=256):
             rd, frame = capture.read()
             faces = detect_face(frame)
           #  print(faces)
-            if len(faces) != 0 :
+            if len(faces) != 0:
                 for (x, y, w, h) in faces:
                     h = min(int(1.6 * h), (frame_height - y))
                     frame = frame[y:y + h, x:x + w]

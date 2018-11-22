@@ -25,8 +25,8 @@ def create_video_clip(video_paths, width=256, height=256):
         prob_id = path[4]
         cond = path[5].split('_')[0]
         #######LOCAL####################################################
-        #prob_id = '01'
-        #cond = 'lighting'
+        # prob_id = 'Proband02'
+        # cond = '101'
         ##################################################################
         print(cond)
         print(prob_id)
@@ -63,8 +63,8 @@ def create_video_clip(video_paths, width=256, height=256):
         capture.release()
 
 
-if __name__ == '__main__':
-    ##########batched labeled-samples######################
+#if __name__ == '__main__':
+    ##########1.remote-prepro all videos######################
    # for cond in ['lighting', 'movement']:
    #     if cond == 'lighting':
    #         n = 6
@@ -74,5 +74,8 @@ if __name__ == '__main__':
    #         vd, _ = utils.create_file_paths(range(2, 8), cond=cond, cond_typ=i)
    #         create_video_clip(vd)
     #create_video_clip(VIDEO_PATHS)
-    vd, _ = utils.create_file_paths(range(2, 8))
-    create_video_clip(vd)
+    ##########2.remote-prepro part of videos######################
+    # vd, _ = utils.create_file_paths(range(2, 8))
+    # create_video_clip(vd)
+    ##########3.local-prepro part of videos######################
+    #create_video_clip(VIDEO_PATHS)
