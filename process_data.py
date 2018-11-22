@@ -177,8 +177,8 @@ def get_batch(video_paths, label_paths, clips, batch_size, width=112, height=112
     frame_batch = []
     diff_batch = []
     label_batch = []
-    for video_path, label_path in zip(video_paths, label_paths):
-        for i in clips:
+    for i in clips:
+        for video_path, label_path in zip(video_paths, label_paths):
             iterator = get_sample(video_path, label_path, i, width=width, height=height)
             try:
                 while True:

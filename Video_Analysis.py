@@ -100,7 +100,7 @@ class VideoAnalysis(object):
         total_loss = 0
         n_batch = 0
         start_time = time.time()
-        train_gen = self.get_data(self.train_video_paths, self.train_label_paths, [1])
+        train_gen = self.get_data(self.train_video_paths, self.train_label_paths, [1, 2, 3, 4, 5])
         try:
             while True:
                 print("epoch " + str(epoch + 1) + "-" + str(n_batch + 1))
@@ -186,8 +186,8 @@ if __name__ == '__main__':
 #            tr_lb_paths += tr_lb_path
 #            te_vd_paths += te_vd_path
 #            te_lb_paths += te_lb_path
-    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 3, 4, 5 , 6])
-    te_vd_paths, te_lb_paths = utils.create_file_paths([7])
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 3, 4, 7 , 6])
+    te_vd_paths, te_lb_paths = utils.create_file_paths([5])
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
     ######################################################################################
     #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
