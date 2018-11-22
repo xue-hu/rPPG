@@ -36,7 +36,6 @@ def crop_resize_face(video_path, width=112, height=112):
         if not rd:
             return -1
         faces = utils.detect_face(frame)
-        print(faces)
         if len(faces) != 0:
             for (x, y, w, h) in faces:
                 # Convert bounding box to two CvPoints
