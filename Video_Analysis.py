@@ -132,7 +132,7 @@ class VideoAnalysis(object):
         print("begin to evaluate.....")
         total_accuracy = 0
         n_test = 0
-        test_gen = self.get_data(self.test_video_paths, self.test_label_paths, [1])
+        test_gen = self.get_data(self.test_video_paths, self.test_label_paths, [1, 3])
         try:
             while True:
                 frames, diffs, labels = next(test_gen)
@@ -184,7 +184,10 @@ if __name__ == '__main__':
 #            tr_lb_paths += tr_lb_path
 #            te_vd_paths += te_vd_path
 #            te_lb_paths += te_lb_path
-    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 3, 4, 7 , 6])
+    p = range(12, 15)
+    s_p = [2, 3, 4, 6, 7, 9, 10]
+    s_p += p
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths(s_p)
     te_vd_paths, te_lb_paths = utils.create_file_paths([5])
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
     ######################################################################################

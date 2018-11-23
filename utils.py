@@ -12,7 +12,8 @@ import struct
 import math
 
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
-
+LABEL_MEAN = 390.04378353 
+LABEL_STD = 148.0124269
 
 def download(down_link, file_path, expected_bytes):
     if os.path.exists(file_path):
@@ -94,10 +95,10 @@ def cal_meanStd_video(video_paths, width=256, height=256):
 
 def cal_meanStd_label(label_paths, data_len=8):
     sgn_li = []
-    for v_path in label_paths:
-        print(v_path)
-        print(os.path.exists(v_path))
-        path = v_path.split('/')
+    for label_path in label_paths:
+        print(label_path)
+        print(os.path.exists(label_path))
+        path = label_path.split('/')
         prob_id = path[4]
         cond = path[5].split('_')[0]
         print(cond+'-'+prob_id)
@@ -108,11 +109,11 @@ def cal_meanStd_label(label_paths, data_len=8):
                 d_sgn = struct.unpack("d", sgn)[0]
                 sgn_li.append(d_sgn)
         except Exception:
-            pass
-        binFile.close()
-        mean = np.mean(sgn_li)
-        std = np.std(sgn_li)
-        return mean, std
+            binFile.close()
+            #continue
+    mean = np.mean(sgn_li)
+    std = np.std(sgn_li)
+    return mean, std
 
 
 def create_file_paths(probs, cond='lighting', cond_typ=0, sensor_sgn=1):
@@ -187,7 +188,8 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
             pos = math.floor(idx * skip_step)
             binFile.seek(pos * data_len)
             sgn = binFile.read(data_len)
-            d_sgn = struct.unpack("d", sgn)[0]
+            d_sgn = struct.unpack("d", sgn)[0] - LABEL_MEAN
+            d_sgn = d_sgn / LABEL_STD
             labels.append(d_sgn)
             idx += 1
     except Exception:
@@ -196,7 +198,7 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
     return labels
 
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
     #######remote&whole#######mean&std file####################################################
     # dict = {}
     # con = ''
@@ -235,18 +237,18 @@ if __name__ == '__main__':
     #         for v in vd:
     #             get_meanstd(v)
     ###############mean&std labels#####################################################################
-    l_paths = []
-    for cond in ['lighting', 'movement']:
-        if cond == 'lighting':
-            n = 6
-        else:
-            n = 4
-        for i in range(n):
-            _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-            l_paths += lb
-    mean, dev = cal_meanStd_label(l_paths)
-    print(mean)
-    print(dev)
+   # l_paths = []
+   # for cond in ['lighting', 'movement']:
+   #     if cond == 'lighting':
+   #         n = 6
+   #     else:
+   #         n = 4
+   #     for i in range(n):
+   #         _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+   #         l_paths += lb
+   # mean, dev = cal_meanStd_label(l_paths)
+   # print(mean)
+   # print(dev)
 #############################check generated labels###########################################
 # li = cvt_labels(1,8)
 # for i in li:
