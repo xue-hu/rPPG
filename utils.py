@@ -10,6 +10,7 @@ import pickle
 import cv2
 import struct
 import math
+from scipy import fftpack
 
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 LABEL_MEAN = 390.04378353 
@@ -117,13 +118,14 @@ def cal_meanStd_label(label_paths, data_len=8):
 
 
 def create_file_paths(probs, cond='lighting', cond_typ=0, sensor_sgn=1):
-    src_path = '/Vitalcam_Dataset/07_Datenbank_Smarthome/Testaufnahmen/Proband'
+    v_src_path = '/Vitalcam_Dataset/07_Datenbank_Smarthome/newSync/Proband'
+    l_src_path = '/Vitalcam_Dataset/07_Datenbank_Smarthome/Testaufnahmen/Proband'
     conditions = {'lighting': ['/101_natural_lighting', '/102_artificial_lighting',
                                '/103_abrupt_changing_lighting', '/104_dim_lighting_auto_exposure',
                                '/106_green_lighting', '/107_infrared_lighting'],
                   'movement': ['/201_shouldercheck', '/202_scale_movement', '/203_translation_movement',
                                '/204_writing']}
-    video_name = '/Logitech HD Pro Webcam C920.avi'
+    video_name = '/synced2_Logitech HD Pro Webcam C920.avi'
     label_name = '/synced_Logitech HD Pro Webcam C920/'
     sgn_typ = ['1_EKG-AUX.bin', '5_Pleth.bin', '6_Pulse.bin']
 
@@ -132,8 +134,8 @@ def create_file_paths(probs, cond='lighting', cond_typ=0, sensor_sgn=1):
 
     for i in probs:
         prob_id = str(i) if (i > 9) else ('0' + str(i))
-        video_path = src_path + prob_id + conditions[cond][cond_typ] + video_name
-        label_path = src_path + prob_id + conditions[cond][cond_typ] + label_name + sgn_typ[sensor_sgn]
+        video_path = v_src_path + prob_id + conditions[cond][cond_typ] + video_name
+        label_path = l_src_path + prob_id + conditions[cond][cond_typ] + label_name + sgn_typ[sensor_sgn]
         video_paths.append(video_path)
         label_paths.append(label_path)
     # print(video_paths)
@@ -196,6 +198,11 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
         pass
     binFile.close()
     return labels
+
+
+def cvt_heartRate(pleth_list):
+    freq = fftpack.fft(pleth_list)
+
 
 
 #if __name__ == '__main__':
