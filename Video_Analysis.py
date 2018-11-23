@@ -35,8 +35,6 @@ class VideoAnalysis(object):
 
     def get_data(self, video_paths, label_paths, clips):
         print("create generator....")
-        #gen = process_data.nor_diff_clip(video_paths, width=self.width, height=self.height, clip=clip)
-        #sample_gen = process_data.get_sample(video_paths, label_paths, clip=clip, width=self.width, height=self.height)
         batch_gen = process_data.get_batch(video_paths, label_paths, clips, self.batch_size, width=self.width, height=self.height)
         return batch_gen
 

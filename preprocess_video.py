@@ -1,4 +1,4 @@
-#!/usr/bin/python3.5
+g  # !/usr/bin/python3.5
 __author__ = 'Iris'
 
 import os
@@ -16,7 +16,7 @@ VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi
 LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 
 
-def create_video_clip(video_paths, width=256, height=256):
+def create_video_clip(video_paths, width=128, height=128):
     for video_path in video_paths:
         ########REMOTE####################################################
         print(video_path)
@@ -41,9 +41,9 @@ def create_video_clip(video_paths, width=256, height=256):
         clip = 0
         for idx in range(nframe):
             if idx % 720 == 0:
-               clip += 1 
-            if not os.path.exists('./processed_video/' + cond + '/' + prob_id + '/'+str(clip)+'/'):
-               os.makedirs('./processed_video/' + cond + '/' + prob_id + '/'+str(clip)+'/')
+                clip += 1
+            if not os.path.exists('./processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'):
+                os.makedirs('./processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/')
             if idx % 100 == 0:
                 print("reading in frame " + str(idx))
             rd, frame = capture.read()
@@ -55,7 +55,9 @@ def create_video_clip(video_paths, width=256, height=256):
                     h = min(int(1.6 * h), (frame_height - y))
                     frame = frame[y:y + h, x:x + w]
                     frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC)
-                    cv2.imwrite(('./processed_video/' + cond + '/' + prob_id + '/' +str(clip)+'/'+ str(idx) + '.jpg'), frame)
+                    cv2.imwrite(
+                        ('./processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/' + str(idx) + '.jpg'),
+                        frame)
                     break
                     # cv2.imshow('frame', frame)
                     # cv2.waitKey(0)
@@ -63,19 +65,19 @@ def create_video_clip(video_paths, width=256, height=256):
         capture.release()
 
 
-#if __name__ == '__main__':
-    ##########1.remote-prepro all videos######################
-   # for cond in ['lighting', 'movement']:
-   #     if cond == 'lighting':
-   #         n = 6
-   #     else:
-   #         n = 4
-   #     for i in range(n):
-   #         vd, _ = utils.create_file_paths(range(2, 8), cond=cond, cond_typ=i)
-   #         create_video_clip(vd)
-    #create_video_clip(VIDEO_PATHS)
-    ##########2.remote-prepro part of videos######################
-    # vd, _ = utils.create_file_paths(range(2, 8))
-    # create_video_clip(vd)
+if __name__ == '__main__':
+    #########1.remote-prepro all videos######################
+    # for cond in ['lighting', 'movement']:
+    #     if cond == 'lighting':
+    #         n = 6
+    #     else:
+    #         n = 4
+    #     for i in range(n):
+    #         vd, _ = utils.create_file_paths(range(2, 8), cond=cond, cond_typ=i)
+    #         create_video_clip(vd)
+    # create_video_clip(VIDEO_PATHS)
+    #########2.remote-prepro part of videos######################
+    vd, _ = utils.create_file_paths(range(2, 8))
+    create_video_clip(vd)
     ##########3.local-prepro part of videos######################
-    #create_video_clip(VIDEO_PATHS)
+    # create_video_clip(VIDEO_PATHS)

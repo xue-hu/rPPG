@@ -7,6 +7,7 @@ import cv2
 import utils
 import numpy as np
 import math
+import random
 
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
@@ -177,23 +178,24 @@ def get_batch(video_paths, label_paths, clips, batch_size, width=112, height=112
     frame_batch = []
     diff_batch = []
     label_batch = []
-    for i in clips:
-        for video_path, label_path in zip(video_paths, label_paths):
-            iterator = get_sample(video_path, label_path, i, width=width, height=height)
-            try:
-                while True:
-                    while len(frame_batch) < batch_size:
-                        frame, diff, label = next(iterator)
-                        frame_batch.append(frame)
-                        diff_batch.append(diff)
-                        label_batch.append(label)
-                    yield frame_batch, diff_batch, label_batch
-                    # print('done one batch.')
-                    frame_batch = []
-                    diff_batch = []
-                    label_batch = []
-            except StopIteration:
-                continue
+    paths = [(v_p, l_p, clip) for v_p, l_p in zip(video_paths, label_paths) for clip in clips]
+    random.shuffle(paths)
+    for (video_path, label_path, clip) in paths:
+        iterator = get_sample(video_path, label_path, clip=clip, width=width, height=height)
+        try:
+            while True:
+                while len(frame_batch) < batch_size:
+                    frame, diff, label = next(iterator)
+                    frame_batch.append(frame)
+                    diff_batch.append(diff)
+                    label_batch.append(label)
+                yield frame_batch, diff_batch, label_batch
+                # print('done one batch.')
+                frame_batch = []
+                diff_batch = []
+                label_batch = []
+        except StopIteration:
+            continue
 
 
 
