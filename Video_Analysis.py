@@ -28,7 +28,7 @@ class VideoAnalysis(object):
         self.test_label_paths = test_label_paths
         self.width = img_width
         self.height = img_height
-        self.lr = 8.0
+        self.lr = 4.0
         self.batch_size = 32
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 3000

@@ -139,8 +139,8 @@ def nor_diff_clip(video_path, clip=1, width=112, height=112):
         next_path = scr_path + str(idx + 1) + '.jpg'
         pre_frame = cv2.imread(pre_path).astype(np.float32)
         next_frame = cv2.imread(next_path).astype(np.float32)
-        #pre_frame = utils.rscale_frame(mean, dev)
-        #next_frame = utils.rscale_frame(mean, dev)
+        pre_frame = utils.rescale_frame(pre_frame, mean, dev)
+        next_frame = utils.rescale_frame(next_frame, mean, dev)
         #pre_frame = cv2.resize(pre_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
         #next_frame = cv2.resize(next_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
         diff = np.subtract(next_frame, pre_frame)
