@@ -25,7 +25,7 @@ TEST_LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Web
 class VideoAnalysis(object):
     def __init__(self, train_video_paths, train_label_paths,
                  test_video_paths, test_label_paths,
-                 img_width=256, img_height=256):
+                 img_width, img_height):
         self.train_video_paths = train_video_paths
         self.train_label_paths = train_label_paths
         self.test_video_paths = test_video_paths
@@ -33,15 +33,14 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.duration = 30
-        self.lr = 4.0
+        self.lr = 2.0
         self.batch_size = 32
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 3000
 
     def get_data(self, video_paths, label_paths, clips, mode='train'):
         print("create generator....")
-        batch_gen = process_data.get_batch(video_paths, label_paths, clips, self.batch_size, mode,
-                                           width=self.width, height=self.height)
+        batch_gen = process_data.get_batch(video_paths, label_paths, clips, self.batch_size, width=self.width, height=self.height, mode=mode)
         return batch_gen
 
     # def create_training_input(self, train_video_path, train_label_path):
@@ -66,7 +65,7 @@ class VideoAnalysis(object):
         self.model.two_stream_vgg_load()
 
     def inference(self):
-        self.pred = tf.reshape(self.model.output, [self.batch_size, ])
+        self.pred = tf.reshape(self.model.output, [-1])
 
 
     def loss(self):
@@ -91,10 +90,10 @@ class VideoAnalysis(object):
 
     def create_summary(self):
         print("crteate summary.....")
-        tf.summary.scalar('loss', self.loss)
-        tf.summary.scalar('accuracy', self.accuracy)
-        summary_op = tf.summary.merge_all()
-        return summary_op
+        summary_loss = tf.summary.scalar('loss', self.loss)
+        summary_accuracy = tf.summary.scalar('accuracy', self.accuracy)
+        #summary_op = tf.summary.merge_all()
+        return summary_loss, summary_accuracy
 
     def build_graph(self):
         self.loading_model()
@@ -123,6 +122,7 @@ class VideoAnalysis(object):
                                             feed_dict={self.input_img: frames,
                                                        self.input_diff: diffs,
                                                        self.labels: labels,
+                                                  
                                                        self.keep_prob: 0.9})
                 total_loss += loss
                 n_batch += 1
@@ -141,32 +141,36 @@ class VideoAnalysis(object):
         print("begin to evaluate.....")
         total_accuracy = 0
         n_pass = 0
-        thd = math.ceil(self.duration / self.batch_size)
+        thd = math.ceil(self.duration*FRAME_RATE / self.batch_size) + 1
         for test_video_path, test_label_path in zip(self.test_video_paths, self.test_label_paths):
-            test_gen = self.get_data(test_video_path, test_label_path, mode='test')
+            test_gen = self.get_data([test_video_path], [test_label_path], [1, 2], mode='test')
             n_test = 0
             ppgs = []
             try:
                 while True:
                     frames, diffs, gts = next(test_gen)
-                    pred, summary = sess.run([self.pred, summary_op],
+                    pred = sess.run([self.pred],
                                                  feed_dict={self.input_img: frames,
                                                             self.input_diff: diffs,
                                                             #self.gts: gts,
                                                             self.keep_prob: 1})
-                    ppgs += pred
+                    ppgs += pred[0].tolist()
                     n_test += 1
                     n_pass += 1
+                    print('total ppg len:'+str(len(ppgs)))
+                    print('n_test:'+str(n_test))
+                    print('thd:'+str(thd))
                     if n_test >= thd:
+                        print('cvt ppg >>>>>>>>>>>>')
                         hr = process_data.get_hr(ppgs, self.batch_size, self.duration, fs=FRAME_RATE)
                         accuracy, summary = sess.run([self.accuracy, summary_op],
                                                  feed_dict={self.hrs: hr,
                                                             self.gts: gts})
                         total_accuracy += accuracy
-                    writer.add_summary(summary, global_step=step)
+                        writer.add_summary(summary, global_step=step)
             except StopIteration:
                 pass
-        print('Accuracy at epoch {0}: {1}'.format(epoch, total_accuracy / (n_pass - thd)))
+        print('Accuracy at epoch {0}: {1}'.format(epoch, total_accuracy / (n_pass - thd - 1)))
 
     def train(self, n_epoch):
         print("begin to train.....")
@@ -176,13 +180,13 @@ class VideoAnalysis(object):
             writer = tf.summary.FileWriter('./graphs/', sess.graph)
             print("computational graph saved.")
             saver = tf.train.Saver()
-            summary_op = self.create_summary()
+            summary_loss, summary_accuracy = self.create_summary()
             step = self.gstep.eval()
             # if tf.train.checkpoint_exists('./checkpoint'):
             #     saver.restore(sess, './checkpoint')
             for epoch in range(n_epoch):
-                step = self.train_one_epoch(sess, writer, saver, summary_op, epoch, step)
-                self.eval_once(sess, writer, summary_op, epoch, step)
+            #    step = self.train_one_epoch(sess, writer, saver, summary_loss, epoch, step)
+                self.eval_once(sess, writer, summary_accuracy, epoch, step)
             writer.close()
 
 
@@ -207,9 +211,9 @@ if __name__ == '__main__':
     s_p = [2, 3, 4, 6, 7, 9, 10]
     p = range(12, 15)
     s_p += p
-    tr_vd_paths, tr_lb_paths = utils.create_file_paths(s_p)
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 3, 4])
     te_vd_paths, te_lb_paths = utils.create_file_paths([5], sensor_sgn=0)
-    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
+    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths, img_width=128, img_height=128)
     ######################################################################################
     #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
     model.build_graph()

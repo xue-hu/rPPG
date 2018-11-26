@@ -12,7 +12,7 @@ import struct
 import scipy
 from scipy import fftpack
 from scipy.signal import butter, cheby2, lfilter
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
@@ -116,6 +116,7 @@ def get_hr(labels, batch_size, duration, fs, lowcut=0.7, highcut=2.5, order=6):
     for idx in range((-batch_size), 0, 1):
         start_pos = idx - N
         end_pos = idx
+        print('ppg fraction:'+str(start_pos)+'--'+str(end_pos))
         ppg = labels[start_pos:end_pos]
         #print(str(idx + batch_size) + '-' + len(ppg))
         hr.append(cvt_hr(ppg, duration, fs, lowcut, highcut, order))
@@ -323,9 +324,9 @@ def get_batch(video_paths, label_paths, clips, batch_size, width=112, height=112
 if __name__ == '__main__':
     ##########batched labeled-samples######################
     train_v_paths, train_l_paths = utils.create_file_paths([2,3])
-    train_gen = get_batch(v_paths, l_paths, [1, 2], 500)
+    train_gen = get_batch(train_v_paths, train_l_paths, [1, 2], 500)
     test_v_paths, test_l_paths = utils.create_file_paths([3], sensor_sgn=0)
-    test_gen = get_batch(v_paths, l_paths, 500, mode='test')
+    test_gen = get_batch(test_v_paths, test_l_paths, [1,2], 500, mode='test')
 
     #######################################################
     # train_gen = get_batch(VIDEO_PATHS, LABEL_PATHS, [1, 2], 500)

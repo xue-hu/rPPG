@@ -178,12 +178,6 @@ def clip_dframe(img, mean=0, deviation=1.0):
 
 
 def cvt_sensorSgn(label_path, skip_step, data_len=8):
-    # src_path = '/Vitalcam_Dataset/07_Datenbank_Smarthome/Testaufnahmen/Proband'
-    # sgn_typ = ['1_EKG-AUX.bin', '5_Pleth.bin', '6_Pulse.bin']
-    # for i in range(n_probs):
-    # prob_id = str(i) if (i > 9) else ('0' + str(i))
-    # label_path = src_path + prob_id + '/Proband_' + prob_id + '_unisens/' + sgn_typ[1]
-    # binFile = open(label_path,'rb')
     labels = []
     binFile = open(label_path, 'rb')
     idx = 0
@@ -192,7 +186,7 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
             pos = math.floor(idx * skip_step)
             binFile.seek(pos * data_len)
             sgn = binFile.read(data_len)
-            d_sgn = struct.unpack("d", sgn)[0] #- LABEL_MEAN
+            d_sgn = struct.unpack("d", sgn)[0] - LABEL_MEAN
             #d_sgn = d_sgn / LABEL_STD
             labels.append(d_sgn)
             idx += 1
