@@ -8,10 +8,14 @@ import cv2
 import loading_model
 import process_data
 import utils
+import math
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 NUM_LABELS = 3862
+ECG_SAMPLE_RATE = 16.0
+PLE_SAMPLE_RATE = 256.0
+FRAME_RATE = 30.0
 TRAIN_VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 TRAIN_LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 TEST_VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
@@ -28,14 +32,16 @@ class VideoAnalysis(object):
         self.test_label_paths = test_label_paths
         self.width = img_width
         self.height = img_height
+        self.duration = 30
         self.lr = 4.0
         self.batch_size = 32
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 3000
 
-    def get_data(self, video_paths, label_paths, clips):
+    def get_data(self, video_paths, label_paths, clips, mode='train'):
         print("create generator....")
-        batch_gen = process_data.get_batch(video_paths, label_paths, clips, self.batch_size, width=self.width, height=self.height)
+        batch_gen = process_data.get_batch(video_paths, label_paths, clips, self.batch_size, mode,
+                                           width=self.width, height=self.height)
         return batch_gen
 
     # def create_training_input(self, train_video_path, train_label_path):
@@ -62,6 +68,7 @@ class VideoAnalysis(object):
     def inference(self):
         self.pred = tf.reshape(self.model.output, [self.batch_size, ])
 
+
     def loss(self):
         print("crteate loss-Function.....")
         with tf.name_scope('loss'):
@@ -71,8 +78,10 @@ class VideoAnalysis(object):
     def evaluation(self):
         print("create evaluation methods.....")
         with tf.name_scope('accuracy'):
-            diff = tf.abs(self.pred - self.labels)
-            indicator = tf.where(diff < 10)
+            self.hrs = tf.placeholder(dtype=tf.float32, name='pred_hr', shape=[self.batch_size, ])
+            self.gts = tf.placeholder(dtype=tf.float32, name='ground_truth', shape=[self.batch_size, ])
+            diff = tf.abs(self.hrs - self.gts)
+            indicator = tf.where(diff < 5)
             self.accuracy = tf.truediv(tf.size(indicator), self.batch_size)
             #self.accuracy = tf.losses.mean_squared_error(labels=self.labels, predictions=self.pred)/ self.batch_size
 
@@ -131,22 +140,33 @@ class VideoAnalysis(object):
     def eval_once(self, sess, writer, summary_op, epoch, step):
         print("begin to evaluate.....")
         total_accuracy = 0
-        n_test = 0
-        test_gen = self.get_data(self.test_video_paths, self.test_label_paths, [1, 3])
-        try:
-            while True:
-                frames, diffs, labels = next(test_gen)
-                accuracy, summary = sess.run([self.accuracy, summary_op],
-                                             feed_dict={self.input_img: frames,
-                                                        self.input_diff: diffs,
-                                                        self.labels: labels,
-                                                        self.keep_prob: 1})
-                total_accuracy += accuracy
-                n_test += 1
-                writer.add_summary(summary, global_step=step)
-        except StopIteration:
-            pass
-        print('Accuracy at epoch {0}: {1}'.format(epoch, total_accuracy / n_test))
+        n_pass = 0
+        thd = math.ceil(self.duration / self.batch_size)
+        for test_video_path, test_label_path in zip(self.test_video_paths, self.test_label_paths):
+            test_gen = self.get_data(test_video_path, test_label_path, mode='test')
+            n_test = 0
+            ppgs = []
+            try:
+                while True:
+                    frames, diffs, gts = next(test_gen)
+                    pred, summary = sess.run([self.pred, summary_op],
+                                                 feed_dict={self.input_img: frames,
+                                                            self.input_diff: diffs,
+                                                            #self.gts: gts,
+                                                            self.keep_prob: 1})
+                    ppgs += pred
+                    n_test += 1
+                    n_pass += 1
+                    if n_test >= thd:
+                        hr = process_data.get_hr(ppgs, self.batch_size, self.duration, fs=FRAME_RATE)
+                        accuracy, summary = sess.run([self.accuracy, summary_op],
+                                                 feed_dict={self.hrs: hr,
+                                                            self.gts: gts})
+                        total_accuracy += accuracy
+                    writer.add_summary(summary, global_step=step)
+            except StopIteration:
+                pass
+        print('Accuracy at epoch {0}: {1}'.format(epoch, total_accuracy / (n_pass - thd)))
 
     def train(self, n_epoch):
         print("begin to train.....")
@@ -184,11 +204,11 @@ if __name__ == '__main__':
 #            tr_lb_paths += tr_lb_path
 #            te_vd_paths += te_vd_path
 #            te_lb_paths += te_lb_path
-    p = range(12, 15)
     s_p = [2, 3, 4, 6, 7, 9, 10]
+    p = range(12, 15)
     s_p += p
     tr_vd_paths, tr_lb_paths = utils.create_file_paths(s_p)
-    te_vd_paths, te_lb_paths = utils.create_file_paths([5])
+    te_vd_paths, te_lb_paths = utils.create_file_paths([5], sensor_sgn=0)
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths)
     ######################################################################################
     #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)

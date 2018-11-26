@@ -10,7 +10,9 @@ import pickle
 import cv2
 import struct
 import math
+import scipy
 from scipy import fftpack
+from scipy.signal import butter, cheby2, lfilter
 
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 LABEL_MEAN = 390.04378353 
@@ -118,16 +120,16 @@ def cal_meanStd_label(label_paths, data_len=8):
 
 
 def create_file_paths(probs, cond='lighting', cond_typ=0, sensor_sgn=1):
-    v_src_path = '/Vitalcam_Dataset/07_Datenbank_Smarthome/newSync/Proband'
-    l_src_path = '/Vitalcam_Dataset/07_Datenbank_Smarthome/Testaufnahmen/Proband'
+    v_src_path = '/Vitalcam_Dataset/07_Datenbank_Smarthome/Testaufnahmen/Proband'
+    l_src_path = '/Vitalcam_Dataset/07_Datenbank_Smarthome/newSync/Proband'
     conditions = {'lighting': ['/101_natural_lighting', '/102_artificial_lighting',
                                '/103_abrupt_changing_lighting', '/104_dim_lighting_auto_exposure',
                                '/106_green_lighting', '/107_infrared_lighting'],
                   'movement': ['/201_shouldercheck', '/202_scale_movement', '/203_translation_movement',
                                '/204_writing']}
-    video_name = '/synced2_Logitech HD Pro Webcam C920.avi'
-    label_name = '/synced_Logitech HD Pro Webcam C920/'
-    sgn_typ = ['1_EKG-AUX.bin', '5_Pleth.bin', '6_Pulse.bin']
+    video_name = '/Logitech HD Pro Webcam C920.avi'
+    label_name = '/synced2_Logitech HD Pro Webcam C920/'
+    sgn_typ = ['6_Pulse.bin', '5_Pleth.bin', '1_EKG-AUX.bin']
 
     video_paths = []
     label_paths = []
@@ -190,8 +192,8 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
             pos = math.floor(idx * skip_step)
             binFile.seek(pos * data_len)
             sgn = binFile.read(data_len)
-            d_sgn = struct.unpack("d", sgn)[0] - LABEL_MEAN
-            d_sgn = d_sgn / LABEL_STD
+            d_sgn = struct.unpack("d", sgn)[0] #- LABEL_MEAN
+            #d_sgn = d_sgn / LABEL_STD
             labels.append(d_sgn)
             idx += 1
     except Exception:
@@ -200,8 +202,26 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
     return labels
 
 
-def cvt_heartRate(pleth_list):
-    freq = fftpack.fft(pleth_list)
+def butter_bandpass(lowcut, highcut, fs, order):
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype='band')
+    return b, a
+
+
+def butter_bandpass_filter(data, lowcut, highcut, fs, order):
+    b, a = butter_bandpass(lowcut, highcut, fs, order)
+    y = lfilter(b, a, data)
+    return y
+
+def cheby2_bandpass_filter(data, rs, lowcut, highcut, fs, order):
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = cheby2(order, rs, [low, high], btype='band')
+    y = lfilter(b, a, data)
+    return y
 
 
 
