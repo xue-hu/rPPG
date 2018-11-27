@@ -158,7 +158,7 @@ def get_meanstd(video_path):
     # cond = '101'
     # prob_id = 0
     #############################################################
-    print(cond + ' ' + str(prob_id) + ':')
+    #print(cond + ' ' + str(prob_id) + ':')
     mean, dev = mean_std[cond][prob_id]
     # print(mean)
     # print(dev)
@@ -168,7 +168,7 @@ def get_meanstd(video_path):
 
 def rescale_frame(img, mean=0, dev=1.0):
     img = img - mean  # - np.array([123.68, 116.779, 103.939]).reshape((1, 1, 3))
-    img = np.true_divide(img, dev)
+    #img = np.true_divide(img, dev)
     return img
 
 

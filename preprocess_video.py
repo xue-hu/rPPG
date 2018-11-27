@@ -65,7 +65,7 @@ def create_video_clip(video_paths, width=128, height=128):
         capture.release()
 
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
     #########1.remote-prepro all videos######################
     # for cond in ['lighting', 'movement']:
     #     if cond == 'lighting':
@@ -77,9 +77,9 @@ if __name__ == '__main__':
     #         create_video_clip(vd)
     # create_video_clip(VIDEO_PATHS)
     #########2.remote-prepro part of videos######################
-    vd, _ = utils.create_file_paths([9, 10])
-    v_d, _ = utils.create_file_paths(range(12, 27 ))
-    vd += v_d
-    create_video_clip(vd)
+    # vd, _ = utils.create_file_paths([9, 10])
+    # v_d, _ = utils.create_file_paths(range(12, 27 ))
+    # vd += v_d
+    # create_video_clip(vd)
     ##########3.local-prepro part of videos######################
     # create_video_clip(VIDEO_PATHS)

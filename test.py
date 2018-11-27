@@ -6,7 +6,6 @@ import scipy
 from scipy import fftpack
 from scipy.signal import butter, cheby2, lfilter
 import struct
-import matplotlib.pyplot as plt
 
 LABEL_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin'
 GT_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/6_Pulse.bin'

@@ -40,7 +40,8 @@ class VideoAnalysis(object):
 
     def get_data(self, video_paths, label_paths, clips, mode='train'):
         print("create generator....")
-        batch_gen = process_data.get_batch(video_paths, label_paths, clips, self.batch_size, width=self.width, height=self.height, mode=mode)
+        batch_gen = process_data.get_batch(video_paths, label_paths, clips, self.batch_size,
+                                           width=self.width, height=self.height, mode=mode)
         return batch_gen
 
     # def create_training_input(self, train_video_path, train_label_path):
@@ -149,8 +150,7 @@ class VideoAnalysis(object):
             try:
                 while True:
                     frames, diffs, gts = next(test_gen)
-                    pred = sess.run([self.pred],
-                                                 feed_dict={self.input_img: frames,
+                    pred = sess.run([self.pred], feed_dict={self.input_img: frames,
                                                             self.input_diff: diffs,
                                                             #self.gts: gts,
                                                             self.keep_prob: 1})
@@ -163,11 +163,11 @@ class VideoAnalysis(object):
                     if n_test >= thd:
                         print('cvt ppg >>>>>>>>>>>>')
                         hr = process_data.get_hr(ppgs, self.batch_size, self.duration, fs=FRAME_RATE)
-                        accuracy, summary = sess.run([self.accuracy, summary_op],
-                                                 feed_dict={self.hrs: hr,
-                                                            self.gts: gts})
+                        accuracy, summary = sess.run([self.accuracy, summary_op], feed_dict={self.hrs: hr,
+                                                                                            self.gts: gts})
                         total_accuracy += accuracy
                         writer.add_summary(summary, global_step=step)
+                        step += 1
             except StopIteration:
                 pass
         print('Accuracy at epoch {0}: {1}'.format(epoch, total_accuracy / (n_pass - thd - 1)))
@@ -185,7 +185,7 @@ class VideoAnalysis(object):
             # if tf.train.checkpoint_exists('./checkpoint'):
             #     saver.restore(sess, './checkpoint')
             for epoch in range(n_epoch):
-            #    step = self.train_one_epoch(sess, writer, saver, summary_loss, epoch, step)
+                step = self.train_one_epoch(sess, writer, saver, summary_loss, epoch, step)
                 self.eval_once(sess, writer, summary_accuracy, epoch, step)
             writer.close()
 
@@ -211,7 +211,7 @@ if __name__ == '__main__':
     s_p = [2, 3, 4, 6, 7, 9, 10]
     p = range(12, 15)
     s_p += p
-    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 3, 4])
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 3, 4, 6, 7, 9, 10])
     te_vd_paths, te_lb_paths = utils.create_file_paths([5], sensor_sgn=0)
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths, img_width=128, img_height=128)
     ######################################################################################
