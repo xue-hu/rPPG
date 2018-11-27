@@ -33,7 +33,7 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.duration = 30
-        self.lr = 2.0
+        self.lr = 1.0
         self.batch_size = 32
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 3000
@@ -66,7 +66,7 @@ class VideoAnalysis(object):
         self.model.two_stream_vgg_load()
 
     def inference(self):
-        self.pred = tf.reshape(self.model.output, [-1])
+        self.pred = tf.reshape(self.model.output, [-1])+ tf.constant(390.04379, dtype=tf.float32, name='mean_label')
 
 
     def loss(self):
