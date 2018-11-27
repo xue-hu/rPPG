@@ -20,7 +20,7 @@ FRAME_RATE = 30.0
 VIDEO_DUR = 120
 N_FRAME = 3600
 N_CLIPS = 5
-CLIP_SIZE = N_FRAME / N_CLIPS
+CLIP_SIZE = int(N_FRAME / N_CLIPS)
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 GT_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/6_Pulse.bin']
@@ -83,6 +83,7 @@ def cvt_hr(labels, duration, fs, lowcut, highcut, order):
     # print("The frequency associated with maximum PSD is", freqs2[d], "Hz")
 
     HeartRate = freqs2[d] * 60
+    print('HR:'+str(HeartRate))
     return HeartRate
 
 

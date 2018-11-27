@@ -33,8 +33,8 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.duration = 30
-        self.lr = 1.0
-        self.batch_size = 32
+        self.lr = 12.0
+        self.batch_size = 64
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 3000
 
@@ -211,8 +211,8 @@ if __name__ == '__main__':
     s_p = [2, 3, 4, 6, 7, 9, 10]
     p = range(12, 15)
     s_p += p
-    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 3, 4, 6, 7, 9, 10])
-    te_vd_paths, te_lb_paths = utils.create_file_paths([5], sensor_sgn=0)
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 4, 5, 6, 10, 12, 13])
+    te_vd_paths, te_lb_paths = utils.create_file_paths([14], sensor_sgn=0)
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths, img_width=128, img_height=128)
     ######################################################################################
     #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
