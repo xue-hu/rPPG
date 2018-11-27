@@ -66,7 +66,7 @@ class VideoAnalysis(object):
         self.model.two_stream_vgg_load()
 
     def inference(self):
-        self.pred = tf.reshape(self.model.output, [-1]) + tf.constant(390.04379, dtype=tf.float32, name='mean_label')
+        self.pred = tf.reshape(self.model.output, [-1]) 
 
 
     def loss(self):
@@ -150,7 +150,7 @@ class VideoAnalysis(object):
             try:
                 while True:
                     frames, diffs, gts = next(test_gen)
-                    pred = sess.run([self.pred], feed_dict={self.input_img: frames,
+                    pred,_ = sess.run([self.pred, self.loss], feed_dict={self.input_img: frames,
                                                             self.input_diff: diffs,
                                                             #self.gts: gts,
                                                             self.keep_prob: 1})
@@ -159,7 +159,6 @@ class VideoAnalysis(object):
                     n_pass += 1
                     print('total ppg len:'+str(len(ppgs)))
                     print('n_test:'+str(n_test))
-                    print('thd:'+str(thd))
                     if n_test >= thd:
                         print('cvt ppg >>>>>>>>>>>>')
                         hr = process_data.get_hr(ppgs, self.batch_size, self.duration, fs=FRAME_RATE)
