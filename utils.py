@@ -15,6 +15,7 @@ from scipy import fftpack
 from scipy.signal import butter, cheby2, lfilter
 
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
+LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 LABEL_MEAN = 390.04378353 
 LABEL_STD = 148.0124269
 
@@ -98,31 +99,37 @@ def cal_meanStd_video(video_paths, width=256, height=256):
 
 def cal_meanStd_label(label_paths, data_len=8):
     sgn_li = []
+    skip_step = 256.0 / 30.0
     for label_path in label_paths:
         print(label_path)
         print(os.path.exists(label_path))
-        path = label_path.split('/')
-        prob_id = path[4]
-        cond = path[5].split('_')[0]
-        print(cond+'-'+prob_id)
+        # path = label_path.split('/')
+        # prob_id = path[4]
+        # cond = path[5].split('_')[0]
+        # print(cond+'-'+prob_id)
         binFile = open(label_path, 'rb')
         flag = True
         idx = 0
         try:
             while True:
-                pos = int(math.floor(idx * (256.0 / 30.0)))
+                print('idx:'+str(idx))
+                pos = math.floor(idx * skip_step)
                 if flag:
-                    sgn = binFile.read(pos * data_len)
+                    binFile.seek(pos * data_len)
+                    sgn = binFile.read(data_len)
                     d_sgn = struct.unpack("d", sgn)[0]
                     idx += 1
-                    pos = math.floor(idx * (256.0 / 30.0))
+                    pos = math.floor(idx * skip_step)
+                    binFile.seek(pos * data_len)
                     sgn2 = binFile.read(data_len)
                     d_sgn2 = struct.unpack("d", sgn2)[0]
                     idx += 1
                     flag = False
+                    print(str(d_sgn)+'-'+str(d_sgn2))
                 else:
                     d_sgn = d_sgn2
-                    sgn2 = binFile.read(pos * data_len)
+                    binFile.seek(pos * data_len)
+                    sgn2 = binFile.read(data_len)
                     d_sgn2 = struct.unpack("d", sgn2)[0]
                     idx += 1
                 re = (d_sgn2 - d_sgn)
@@ -130,6 +137,7 @@ def cal_meanStd_label(label_paths, data_len=8):
         except Exception:
             binFile.close()
             #continue
+    print(len(sgn_li))
     mean = np.mean(sgn_li)
     std = np.std(sgn_li)
     return mean, std
@@ -274,16 +282,16 @@ if __name__ == '__main__':
     #         for v in vd:
     #             get_meanstd(v)
     ###############mean&std labels#####################################################################
-    l_paths = []
-    for cond in ['lighting', 'movement']:
-        if cond == 'lighting':
-            n = 6
-        else:
-            n = 4
-        for i in range(n):
-            _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-            l_paths += lb
-    mean, dev = cal_meanStd_label(l_paths)
+    # l_paths = []
+    # for cond in ['lighting', 'movement']:
+    #     if cond == 'lighting':
+    #         n = 6
+    #     else:
+    #         n = 4
+    #     for i in range(n):
+    #         _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+    #         l_paths += lb
+    mean, dev = cal_meanStd_label(LABEL_PATHS)
     print(mean)
     print(dev)
 #############################check generated labels###########################################

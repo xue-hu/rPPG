@@ -150,7 +150,7 @@ class VideoAnalysis(object):
             try:
                 while True:
                     frames, diffs, gts = next(test_gen)
-                    pred,_ = sess.run([self.pred, self.loss], feed_dict={self.input_img: frames,
+                    pred, _ = sess.run([self.pred, self.loss], feed_dict={self.input_img: frames,
                                                             self.input_diff: diffs,
                                                             #self.gts: gts,
                                                             self.keep_prob: 1})

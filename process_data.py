@@ -269,7 +269,7 @@ def get_sample(video_path, label_path, clip=1, width=112, height=112, mode='trai
         end_pos = clip * CLIP_SIZE - 1
         for idx in range(start_pos, end_pos):
             frame, diff = next(diff_iterator)
-            label = float(labels[idx+1] - labels[idx])
+            label = float(labels[idx+1] - labels[idx]) * 1000
             yield (frame, diff, label)
     else:
         diff_iterator = nor_diff_face(video_path, width=width, height=height)
