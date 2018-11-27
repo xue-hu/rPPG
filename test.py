@@ -15,18 +15,21 @@ GT_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/
 # print(m['101'][0])
 # print(len(m['101']))
 
-#video_paths=['a','b','c','d']
-#label_paths=['A','B','C','D']
-#clips = [1,2,3,4,5]
-#paths = [(v_p, l_p, clip) for v_p, l_p in zip(video_paths, label_paths) for clip in clips]
-##random.shuffle(paths)
-#print(len(paths))
-#for (v, l, c) in paths:
+video_paths=['a','b','c','d']
+label_paths=['A','B','C','D']
+paths = list(zip(video_paths, label_paths))
+
+clips = [1,2,3,4,5]
+random.shuffle(clips)
+for clip in clips:
+    random.shuffle(paths)
+    for vp, lp in paths:
+        print(vp + ' ' + lp + ' ' + str(clip))
+#random.shuffle(paths)
+# print(len(paths))
+# for (v, l, c) in paths:
 #    print(v+' '+l+' '+str(c))
-a = [0,-1,0,1,2,3,4,5,6,7]
-for i in range(-8,0,1):
-    s = i - 2
-    print(str(i)+' '+str(a[s:i]))
+
 
 
 

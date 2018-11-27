@@ -66,7 +66,7 @@ class VideoAnalysis(object):
         self.model.two_stream_vgg_load()
 
     def inference(self):
-        self.pred = tf.reshape(self.model.output, [-1])+ tf.constant(390.04379, dtype=tf.float32, name='mean_label')
+        self.pred = tf.reshape(self.model.output, [-1]) + tf.constant(390.04379, dtype=tf.float32, name='mean_label')
 
 
     def loss(self):

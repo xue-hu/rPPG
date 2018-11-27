@@ -19,7 +19,8 @@ PLE_SAMPLE_RATE = 256.0
 FRAME_RATE = 30.0
 VIDEO_DUR = 120
 N_FRAME = 3600
-CLIP_SIZE = 720
+N_CLIPS = 5
+CLIP_SIZE = N_FRAME / N_CLIPS
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 GT_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/6_Pulse.bin']
@@ -99,7 +100,7 @@ def test_hr(label_path, duration, fs, lowcut=0.7, highcut=2.5, order=6, data_len
                 pos = math.floor(offset + n * skip_step)
                 binFile.seek(pos * data_len)
                 sgn = binFile.read(data_len)
-                d_sgn = struct.unpack("d", sgn)[0]
+                d_sgn = struct.unpack("d", sgn)[0] #- 390.04378353
                 labels.append(d_sgn)
                 n += 1
             re = cvt_hr(labels, duration, fs, lowcut, highcut, order)
@@ -172,7 +173,7 @@ def nor_diff_face(video_path, width=112, height=112):
     # prob_id = 'Proband02'
     # cond = '101'
     ###########################################################
-    for clip in range(1, 6):
+    for clip in range(1, int(N_CLIPS+1)):
         scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
         start_pos = (clip - 1) * CLIP_SIZE
         end_pos = clip * CLIP_SIZE
@@ -182,12 +183,12 @@ def nor_diff_face(video_path, width=112, height=112):
             if idx % 100 == 0:
                 print("reading in frame " + str(idx) + "," + str(idx + 1))
             pre_path = scr_path + str(idx) + '.jpg'
-            if idx == end_pos - 1 and clip != 5:
+            if idx == end_pos - 1 and clip != N_CLIPS:
                 print('end of clip-' + str(clip))
                 print('reading in ' + str((clip) * CLIP_SIZE) + '.jpg')
                 scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip + 1) + '/'
                 next_path = scr_path + str(clip * CLIP_SIZE) + '.jpg'
-            elif idx == end_pos - 1 and clip == 5:
+            elif idx == end_pos - 1 and clip == N_CLIPS:
                 print('done ' + cond + '-' + prob_id)
                 raise StopIteration
             else:
@@ -283,25 +284,27 @@ def get_batch(video_paths, label_paths, clips, batch_size, width=112, height=112
     frame_batch = []
     diff_batch = []
     label_batch = []
+    random.shuffle(clips)
+    paths = list(zip(video_paths, label_paths))
     if mode == 'train':
-        paths = [(v_p, l_p, clip) for v_p, l_p in zip(video_paths, label_paths) for clip in clips]
-        random.shuffle(paths)
-        for (video_path, label_path, clip) in paths:
-            iterator = get_sample(video_path, label_path, clip=clip, width=width, height=height, mode=mode)
-            try:
-                while True:
-                    while len(frame_batch) < batch_size:
-                        frame, diff, label = next(iterator)
-                        frame_batch.append(frame)
-                        diff_batch.append(diff)
-                        label_batch.append(label)
-                    yield frame_batch, diff_batch, label_batch
-                    # print('done one batch.')
-                    frame_batch = []
-                    diff_batch = []
-                    label_batch = []
-            except StopIteration:
-                continue
+        for clip in clips:
+            random.shuffle(paths)
+            for (video_path, label_path) in paths:
+                iterator = get_sample(video_path, label_path, clip=clip, width=width, height=height, mode=mode)
+                try:
+                    while True:
+                        while len(frame_batch) < batch_size:
+                            frame, diff, label = next(iterator)
+                            frame_batch.append(frame)
+                            diff_batch.append(diff)
+                            label_batch.append(label)
+                        yield frame_batch, diff_batch, label_batch
+                        # print('done one batch.')
+                        frame_batch = []
+                        diff_batch = []
+                        label_batch = []
+                except StopIteration:
+                    continue
     else:
         for (video_path, label_path) in zip(video_paths, label_paths):
             iterator = get_sample(video_path, label_path, width=width, height=height, mode=mode)
@@ -323,66 +326,66 @@ def get_batch(video_paths, label_paths, clips, batch_size, width=112, height=112
 
 if __name__ == '__main__':
     ##########batched labeled-samples######################
-    train_v_paths, train_l_paths = utils.create_file_paths([2,3])
-    train_gen = get_batch(train_v_paths, train_l_paths, [1, 2], 500)
-    test_v_paths, test_l_paths = utils.create_file_paths([3], sensor_sgn=0)
-    test_gen = get_batch(test_v_paths, test_l_paths, [1,2], 500, mode='test')
+    # train_v_paths, train_l_paths = utils.create_file_paths([2,3])
+    # train_gen = get_batch(train_v_paths, train_l_paths, [1, 2], 500)
+    # test_v_paths, test_l_paths = utils.create_file_paths([3], sensor_sgn=0)
+    # test_gen = get_batch(test_v_paths, test_l_paths, [1,2], 500, mode='test')
 
     #######################################################
     # train_gen = get_batch(VIDEO_PATHS, LABEL_PATHS, [1, 2], 500)
     # test_gen = get_batch(VIDEO_PATHS, GT_PATHS, [1, 2], 500, mode='test')
-    idx = 0
-    print('<<<<<<<<<train gen>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-    try:
-        while True:
-            frames, diffs, labels = next(train_gen)
-            print('batch-'+str(idx))
-            idx += 1
-            for (frame, diff, label) in zip(frames, diffs, labels):
+    # idx = 0
+    # print('<<<<<<<<<train gen>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    # try:
+    #     while True:
+    #         frames, diffs, labels = next(train_gen)
+    #         print('batch-'+str(idx))
+    #         idx += 1
+    #         for (frame, diff, label) in zip(frames, diffs, labels):
             #     # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
             #     # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
             #     cv2.imshow('face', frame.astype(np.uint8))
             #     # cv2.imshow('diff', diff)
-                print(label)
+            #     print(label)
             #     cv2.waitKey(0)
-                break
-    except StopIteration:
-        pass
-    print('<<<<<<<<<test gen>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-    idx = 0
-    try:
-        while True:
-            frames, diffs, labels = next(test_gen)
-            for (frame, diff, label) in zip(frames, diffs, labels):
-                print('batch-' + str(idx))
-                idx += 1
+    #             break
+    # except StopIteration:
+    #     pass
+    # print('<<<<<<<<<test gen>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    # idx = 0
+    # try:
+    #     while True:
+    #         frames, diffs, labels = next(test_gen)
+    #         for (frame, diff, label) in zip(frames, diffs, labels):
+    #             print('batch-' + str(idx))
+    #             idx += 1
                 #     # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
                 #     # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
                 #     cv2.imshow('face', frame.astype(np.uint8))
                 #     # cv2.imshow('diff', diff)
-                print(label)
+                # print(label)
             #     cv2.waitKey(0)
-                break
-    except StopIteration:
-        pass
+    #             break
+    # except StopIteration:
+    #     pass
 
     ############cvt ppg to hr##########################################
-    # gt_paths = utils.create_file_paths([2], sensor_sgn=0)
-    # labels_paths = utils.create_file_paths([2], sensor_sgn=1)
-    # binFile = open(gt_paths[0], 'rb')
-    # data_len = 8
-    # duration = 30
-    # skip_step = 16
-    # idx = 0
-    # gt = []
-    # for idx in range(duration, 120):
-    #     pos = 16 * idx
-    #     binFile.seek(pos * data_len)
-    #     sgn = binFile.read(data_len)
-    #     d_sgn = struct.unpack("d", sgn)[0]
-    #     gt.append(d_sgn)
-    # binFile.close()
-    # hr = test_hr(labels_paths[0], 30, 30)
-    # for rate, g in zip(hr, gt):
-    #     print(str(round(rate)) + '  ' + str(g))
+    #gt_paths = utils.create_file_paths([2], sensor_sgn=0)
+    #labels_paths = utils.create_file_paths([2], sensor_sgn=1)
+    binFile = open(GT_PATHS[0], 'rb')
+    data_len = 8
+    duration = 30
+    skip_step = 16
+    idx = 0
+    gt = []
+    for idx in range(duration, 120):
+        pos = 16 * idx
+        binFile.seek(pos * data_len)
+        sgn = binFile.read(data_len)
+        d_sgn = struct.unpack("d", sgn)[0]
+        gt.append(d_sgn)
+    binFile.close()
+    hr = test_hr(LABEL_PATHS[0], 30, 30)
+    for rate, g in zip(hr, gt):
+        print(str(round(rate)) + '  ' + str(g))
 ###########################################################################
