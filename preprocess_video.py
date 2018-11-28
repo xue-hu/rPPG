@@ -12,6 +12,8 @@ ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
 FRAME_RATE = 30.0
 VIDEO_DUR = 120
+N_CLIPS = 5
+CLIP_SIZE = int(N_FRAME / N_CLIPS)
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 
@@ -40,7 +42,7 @@ def create_video_clip(video_paths, width=128, height=128):
         nframe = int(capture.get(7))
         clip = 0
         for idx in range(nframe):
-            if idx % 720 == 0:
+            if idx % CLIP_SIZE == 0:
                 clip += 1
             if not os.path.exists('./processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'):
                 os.makedirs('./processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/')

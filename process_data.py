@@ -12,7 +12,7 @@ import struct
 import scipy
 from scipy import fftpack
 from scipy.signal import butter, cheby2, lfilter
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
@@ -84,7 +84,7 @@ def cvt_hr(labels, duration, fs, lowcut, highcut, order):
     # print("The frequency associated with maximum PSD is", freqs2[d], "Hz")
 
     HeartRate = freqs2[d] * 60
-    #print('HR:'+str(HeartRate))
+    print('HR:'+str(HeartRate))
     return HeartRate
 
 
@@ -266,7 +266,7 @@ def get_sample(video_path, label_path, clip=1, width=112, height=112, mode='trai
         diff_iterator = nor_diff_clip(video_path, clip=clip, width=width, height=height)
         skip_step = PLE_SAMPLE_RATE / FRAME_RATE
         labels = utils.cvt_sensorSgn(label_path, skip_step)
-        mean, std = get_meanstd(label_path, mode='label')
+        mean, std = utils.get_meanstd(label_path, mode='label')
         start_pos = (clip - 1) * CLIP_SIZE
         end_pos = clip * CLIP_SIZE - 1
         for idx in range(start_pos, end_pos):

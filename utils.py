@@ -202,9 +202,9 @@ def get_meanstd(video_path, mode='video'):
 
 def rescale_frame(img, mean=0, dev=1.0):
     mean = mean.reshape((1, 1, 3))
-    dev = dev.reshape((1, 1, 3))
+   # dev = dev.reshape((1, 1, 3))
     img = img - mean  # - np.array([123.68, 116.779, 103.939]).reshape((1, 1, 3))
-    img = np.true_divide(img, dev)
+   # img = np.true_divide(img, dev)
     return img
 
 

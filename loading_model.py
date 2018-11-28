@@ -65,7 +65,7 @@ class NnModel(object):
     def fully_connected_layer(self, pre_lyr, out_dims, lyr_name):
         _, height, width, depth = pre_lyr.shape.as_list()
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
-            w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal([height, width, depth, out_dims], stddev=0.5))
+            w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal([height, width, depth, out_dims], stddev=0.4))
             b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros_like([out_dims,], dtype=tf.float32))
             z = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='VALID') + b
             #out = tf.nn.relu(z, name=scope.name)

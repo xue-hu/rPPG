@@ -33,7 +33,7 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.duration = 30
-        self.lr = 0.4
+        self.lr = 0.6
         self.batch_size = 32
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 3000
@@ -158,7 +158,7 @@ class VideoAnalysis(object):
                                                             self.input_diff: diffs,
                                                             #self.gts: gts,
                                                             self.keep_prob: 1})
-                    ppgs += pred.tolist()
+                    ppgs += pred
                     n_test += 1
                     n_pass += 1
                     print('total pred len:'+str(len(pred)))
