@@ -33,7 +33,7 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.duration = 30
-        self.lr = 12.0
+        self.lr = 0.2
         self.batch_size = 64
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 3000
@@ -119,13 +119,15 @@ class VideoAnalysis(object):
                 #     print(label)
                 #     cv2.waitKey(0)
                 ############################################
-                loss, _, summary = sess.run([self.loss, self.opt, summary_op],
+                loss, pred, _, summary = sess.run([self.loss, self.pred, self.opt, summary_op],
                                             feed_dict={self.input_img: frames,
                                                        self.input_diff: diffs,
                                                        self.labels: labels,
                                                   
                                                        self.keep_prob: 0.9})
                 total_loss += loss
+                print('pred:')
+                print(pred[0])
                 n_batch += 1
                 writer.add_summary(summary, global_step=step)
                 step += 1

@@ -42,7 +42,7 @@ class NnModel(object):
             w = tf.get_variable(name="weight", dtype=tf.float32, initializer=w_init)
             b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init)
             conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
-            out = tf.nn.relu((conv + b), name=scope.name)
+            out = tf.nn.tanh((conv + b), name=scope.name)
         print(lyr_name)
         print(pre_lyr.shape)
         print(out.shape)
@@ -53,13 +53,13 @@ class NnModel(object):
         w_init = tf.convert_to_tensor(w_init, dtype=tf.float32)
         b_init = tf.convert_to_tensor(b_init, dtype=tf.float32)
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
-            w = tf.get_variable("weight", dtype=tf.float32, initializer=w_init)
-            b = tf.get_variable("bias", dtype=tf.float32, initializer=b_init)
+            w = tf.get_variable(name="weight", dtype=tf.float32, initializer=w_init)
+            b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init)
             conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
             out = tf.nn.tanh((conv + b), name=scope.name)
-        # print(lyr_name)
-        # print(w_init.shape)
-        # print(out.shape)
+        print(lyr_name)
+        print(w_init.shape)
+        print(out.shape)
         setattr(self, (stream_name + '_' + lyr_name), out)
 
     def fully_connected_layer(self, pre_lyr, out_dims, lyr_name):
@@ -68,7 +68,8 @@ class NnModel(object):
             w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal([height, width, depth, out_dims]))
             b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros_like([out_dims,], dtype=tf.float32))
             z = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='VALID') + b
-            out = tf.nn.relu(z, name=scope.name)
+            #out = tf.nn.relu(z, name=scope.name)
+            out = tf.nn.tanh(z, name=scope.name)
         print(lyr_name)
         print(w.shape)
         print(out.shape)
