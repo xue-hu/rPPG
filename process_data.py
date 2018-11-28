@@ -152,7 +152,10 @@ def crop_resize_face(video_path, width=112, height=112):
                 # pt1 = (int(x), int(0.9*y))
                 # pt2 = (int(x + w), int(y + 1.6*h))
                 # cv2.rectangle(frame, pt1, pt2, (255, 0, 0), 5, 8, 0)
-                h = min(int(1.6 * h), (frame_height - y))
+                y = max(int(0.95 * y), 0)
+                h = min(int(1.7 * h), (frame_height - y))
+                x = max(int(0.98 * x), 0)
+                w = min(int(1.2 * w), (frame_width - x))
                 frame = frame[y:y + h, x:x + w]
                 frame = utils.rescale_frame(frame, mean, dev)
                 frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)

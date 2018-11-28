@@ -78,13 +78,16 @@ def cal_meanStd_video(video_paths, width=256, height=256):
         dev = 0.0
         for idx in range(nframe):
             if idx % 100 == 0:
-                print(idx)
+                print('cal mean&std: '+str(idx))
             rd, frame = capture.read()
             faces = detect_face(frame)
             #  print(faces)
             if len(faces) != 0:
                 for (x, y, w, h) in faces:
-                    h = min(int(1.6 * h), (frame_height - y))
+                    y = max(int(0.95 * y), 0)
+                    h = min(int(1.7 * h), (frame_height - y))
+                    x = max(int(0.98 * x), 0)
+                    w = min(int(1.2 * w), (frame_width - x))
                     frame = frame[y:y + h, x:x + w]
                     frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
                     f_mean = np.mean(frame, axis=(0, 1))
@@ -256,21 +259,21 @@ def cheby2_bandpass_filter(data, rs, lowcut, highcut, fs, order):
 
 if __name__ == '__main__':
     #######remote&whole#######mean&std file####################################################
-    # dict = {}
-    # con = ''
-    # col = []
-    # for cond in ['lighting','movement']:
-    #   if cond == 'lighting':
-    #      n = 6
-    # else:
-    #    n = 4
-    # for i in range(n):
-    #    vd, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-    #   con, col = cal_meanStd_video(vd)
-    #  dict[con] = col
-    #    with open('MeanStddev.pickle', 'wb') as f:
-    #       pickle.dump(dict, f)
-    #  f.close()
+    dict = {}
+    con = ''
+    col = []
+    for cond in ['lighting','movement']:
+        if cond == 'lighting':
+            n = 6
+        else:
+            n = 4
+        for i in range(n):
+            vd, _ = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+            con, col = cal_meanStd_video(vd)
+            dict[con] = col
+    with open('MeanStddev.pickle', 'wb') as f:
+        pickle.dump(dict, f)
+    f.close()
     ##########remote&part#####mean&std file###############################################################
     # dict = {}
     # con = ''
@@ -293,21 +296,21 @@ if __name__ == '__main__':
     #         for v in vd:
     #             get_meanstd(v)
     #########remote mean&std labels#####################################################################
-    dict = {}
-    con = ''
-    col = []
-    for cond in ['lighting', 'movement']:
-        if cond == 'lighting':
-            n = 6
-        else:
-            n = 4
-        for i in range(n):
-            _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-            con, col = cal_meanStd_label(lb)
-            dict[con] = col
-    with open('LabelMeanStddev.pickle', 'wb') as f:
-        pickle.dump(dict, f)
-    f.close()
+    # dict = {}
+    # con = ''
+    # col = []
+    # for cond in ['lighting', 'movement']:
+    #     if cond == 'lighting':
+    #         n = 6
+    #     else:
+    #         n = 4
+    #     for i in range(n):
+    #         _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+    #         con, col = cal_meanStd_label(lb)
+    #         dict[con] = col
+    # with open('LabelMeanStddev.pickle', 'wb') as f:
+    #     pickle.dump(dict, f)
+    # f.close()
     #########local mean&std labels#####################################################################
     # dict = {}
     # con = ''

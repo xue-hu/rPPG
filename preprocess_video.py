@@ -10,9 +10,10 @@ import math
 
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
+N_FRAME = 3600
 FRAME_RATE = 30.0
 VIDEO_DUR = 120
-N_CLIPS = 5
+N_CLIPS = 120
 CLIP_SIZE = int(N_FRAME / N_CLIPS)
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
@@ -21,14 +22,14 @@ LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C
 def create_video_clip(video_paths, width=128, height=128):
     for video_path in video_paths:
         ########REMOTE####################################################
-        print(video_path)
-        print(os.path.exists(video_path))
-        path = video_path.split('/')
-        prob_id = path[4]
-        cond = path[5].split('_')[0]
+        # print(video_path)
+        # print(os.path.exists(video_path))
+        # path = video_path.split('/')
+        # prob_id = path[4]
+        # cond = path[5].split('_')[0]
         #######LOCAL####################################################
-        # prob_id = 'Proband02'
-        # cond = '101'
+        prob_id = 'Proband02'
+        cond = '101'
         ##################################################################
         print(cond)
         print(prob_id)
@@ -39,6 +40,7 @@ def create_video_clip(video_paths, width=128, height=128):
         else:
             print("video opened. start to read in.....")
         frame_height = int(capture.get(4))
+        frame_width = int(capture.get(3))
         nframe = int(capture.get(7))
         clip = 0
         for idx in range(nframe):
@@ -54,7 +56,10 @@ def create_video_clip(video_paths, width=128, height=128):
             faces = utils.detect_face(frame)
             if len(faces) != 0:
                 for (x, y, w, h) in faces:
-                    h = min(int(1.6 * h), (frame_height - y))
+                    y = max(int(0.95 * y), 0)
+                    h = min(int(1.7 * h), (frame_height - y))
+                    x = max(int(0.98 * x), 0)
+                    w = min(int(1.2 * w), (frame_width - x))
                     frame = frame[y:y + h, x:x + w]
                     frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC)
                     cv2.imwrite(
@@ -67,16 +72,16 @@ def create_video_clip(video_paths, width=128, height=128):
         capture.release()
 
 
-#if __name__ == '__main__':
+if __name__ == '__main__':
     #########1.remote-prepro all videos######################
-    # for cond in ['lighting', 'movement']:
-    #     if cond == 'lighting':
-    #         n = 6
-    #     else:
-    #         n = 4
-    #     for i in range(n):
-    #         vd, _ = utils.create_file_paths(range(2, 8), cond=cond, cond_typ=i)
-    #         create_video_clip(vd)
+    for cond in ['lighting', 'movement']:
+        if cond == 'lighting':
+            n = 6
+        else:
+            n = 4
+        for i in range(n):
+            vd, _ = utils.create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+            create_video_clip(vd)
     # create_video_clip(VIDEO_PATHS)
     #########2.remote-prepro part of videos######################
     # vd, _ = utils.create_file_paths([9, 10])
@@ -84,4 +89,4 @@ def create_video_clip(video_paths, width=128, height=128):
     # vd += v_d
     # create_video_clip(vd)
     ##########3.local-prepro part of videos######################
-    # create_video_clip(VIDEO_PATHS)
+    create_video_clip(VIDEO_PATHS)
