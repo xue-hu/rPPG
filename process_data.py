@@ -270,13 +270,13 @@ def get_sample(video_path, label_path, clip=1, width=112, height=112, mode='trai
         for idx in range(start_pos, end_pos):
             frame, diff = next(diff_iterator)
             label = float(labels[idx+1] - labels[idx]) 
-            if idx%100 == 0:
+            #if idx%100 == 0:
                 #print('input frame:')
                 #print(frame[60:63,60:63,:])
                 #print('input diff:')
                 #print(diff[60:63,60:63,:])
-                print('label:')
-                print(label)
+                #print('label:')
+                #print(label)
             yield (frame, diff, label)
     else:
         diff_iterator = nor_diff_face(video_path, width=width, height=height)

@@ -33,8 +33,8 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.duration = 30
-        self.lr = 0.2
-        self.batch_size = 64
+        self.lr = 0.4
+        self.batch_size = 32
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 3000
 
@@ -119,15 +119,17 @@ class VideoAnalysis(object):
                 #     print(label)
                 #     cv2.waitKey(0)
                 ############################################
-                loss, pred, _, summary = sess.run([self.loss, self.pred, self.opt, summary_op],
+                loss, pred, labels, __, summary = sess.run([self.loss, self.pred, self.labels, self.opt, summary_op],
                                             feed_dict={self.input_img: frames,
                                                        self.input_diff: diffs,
                                                        self.labels: labels,
                                                   
                                                        self.keep_prob: 0.9})
                 total_loss += loss
+                print('label:')
+                print(labels[:3])
                 print('pred:')
-                print(pred[0])
+                print(pred[:3])
                 n_batch += 1
                 writer.add_summary(summary, global_step=step)
                 step += 1
@@ -152,13 +154,14 @@ class VideoAnalysis(object):
             try:
                 while True:
                     frames, diffs, gts = next(test_gen)
-                    pred, _ = sess.run([self.pred, self.loss], feed_dict={self.input_img: frames,
+                    pred = sess.run([self.pred], feed_dict={self.input_img: frames,
                                                             self.input_diff: diffs,
                                                             #self.gts: gts,
                                                             self.keep_prob: 1})
-                    ppgs += pred[0].tolist()
+                    ppgs += pred.tolist()
                     n_test += 1
                     n_pass += 1
+                    print('total pred len:'+str(len(pred)))
                     print('total ppg len:'+str(len(ppgs)))
                     print('n_test:'+str(n_test))
                     if n_test >= thd:

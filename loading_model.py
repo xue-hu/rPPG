@@ -65,7 +65,7 @@ class NnModel(object):
     def fully_connected_layer(self, pre_lyr, out_dims, lyr_name):
         _, height, width, depth = pre_lyr.shape.as_list()
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
-            w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal([height, width, depth, out_dims]))
+            w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal([height, width, depth, out_dims], stddev=0.5))
             b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros_like([out_dims,], dtype=tf.float32))
             z = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='VALID') + b
             #out = tf.nn.relu(z, name=scope.name)
@@ -92,7 +92,7 @@ class NnModel(object):
         _, width, height, depth = sta_lyr.shape.as_list()
         # print(width, height, depth)
         with tf.variable_scope('atten_'+sta_lyr_name[2:], reuse=tf.AUTO_REUSE) as scope:
-            w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal([1, 1, depth, 1]))
+            w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal([1, 1, depth, 1], stddev=0.5))
             b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros([1, ]))
             conv = tf.nn.conv2d(sta_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
             l1_norm = tf.norm(conv, ord=1)
