@@ -16,8 +16,9 @@ from scipy.signal import butter, cheby2, lfilter
 
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
-LABEL_MEAN = 390.04378353 
+LABEL_MEAN = 390.04378353
 LABEL_STD = 148.0124269
+
 
 def download(down_link, file_path, expected_bytes):
     if os.path.exists(file_path):
@@ -101,18 +102,22 @@ def cal_meanStd_label(label_paths, data_len=8):
     sgn_li = []
     skip_step = 256.0 / 30.0
     for label_path in label_paths:
+        file_label = []
+        #####remote####################################
         print(label_path)
         print(os.path.exists(label_path))
-        # path = label_path.split('/')
-        # prob_id = path[4]
-        # cond = path[5].split('_')[0]
-        # print(cond+'-'+prob_id)
+        path = label_path.split('/')
+        prob_id = path[4]
+        cond = path[5].split('_')[0]
+        print(cond + '-' + prob_id)
+        ######local##############################
+        #cond = '101'
+        #########################################
         binFile = open(label_path, 'rb')
         flag = True
         idx = 0
         try:
             while True:
-                print('idx:'+str(idx))
                 pos = math.floor(idx * skip_step)
                 if flag:
                     binFile.seek(pos * data_len)
@@ -125,7 +130,6 @@ def cal_meanStd_label(label_paths, data_len=8):
                     d_sgn2 = struct.unpack("d", sgn2)[0]
                     idx += 1
                     flag = False
-                    print(str(d_sgn)+'-'+str(d_sgn2))
                 else:
                     d_sgn = d_sgn2
                     binFile.seek(pos * data_len)
@@ -133,14 +137,16 @@ def cal_meanStd_label(label_paths, data_len=8):
                     d_sgn2 = struct.unpack("d", sgn2)[0]
                     idx += 1
                 re = (d_sgn2 - d_sgn)
-                sgn_li.append(re)
+                file_label.append(re)
         except Exception:
             binFile.close()
-            #continue
-    print(len(sgn_li))
-    mean = np.mean(sgn_li)
-    std = np.std(sgn_li)
-    return mean, std
+            # continue
+        print('file label len:')
+        print(len(file_label))
+        mean = np.mean(file_label)
+        std = np.std(file_label)
+        sgn_li.append((mean, std))
+    return cond, sgn_li
 
 
 def create_file_paths(probs, cond='lighting', cond_typ=0, sensor_sgn=1):
@@ -169,9 +175,13 @@ def create_file_paths(probs, cond='lighting', cond_typ=0, sensor_sgn=1):
     return video_paths, label_paths
 
 
-def get_meanstd(video_path):
-    with open('MeanStddev.pickle', 'rb') as file:
-        mean_std = pickle.load(file)
+def get_meanstd(video_path, mode='video'):
+    if mode == 'video':
+        with open('MeanStddev.pickle', 'rb') as file:
+            mean_std = pickle.load(file)
+    else:
+        with open('LabelMeanStddev.pickle', 'rb') as file:
+            mean_std = pickle.load(file)
     ########remote part########################################
     path = video_path.split('/')
     u_id = int(path[4][-1])
@@ -182,17 +192,19 @@ def get_meanstd(video_path):
     # cond = '101'
     # prob_id = 0
     #############################################################
-    #print(cond + ' ' + str(prob_id) + ':')
+    # print(cond + ' ' + str(prob_id) + ':')
     mean, dev = mean_std[cond][prob_id]
     # print(mean)
     # print(dev)
     file.close()
-    return mean.reshape((1, 1, 3)), dev.reshape((1, 1, 3))
+    return mean, dev
 
 
 def rescale_frame(img, mean=0, dev=1.0):
+    mean = mean.reshape((1, 1, 3))
+    dev = dev.reshape((1, 1, 3))
     img = img - mean  # - np.array([123.68, 116.779, 103.939]).reshape((1, 1, 3))
-    #img = np.true_divide(img, dev)
+    img = np.true_divide(img, dev)
     return img
 
 
@@ -205,13 +217,14 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
     labels = []
     binFile = open(label_path, 'rb')
     idx = 0
+    mean, std = get_meanstd(label_path, mode='label')
     try:
         while True:
             pos = math.floor(idx * skip_step)
             binFile.seek(pos * data_len)
             sgn = binFile.read(data_len)
-            d_sgn = struct.unpack("d", sgn)[0] - LABEL_MEAN
-            #d_sgn = d_sgn / LABEL_STD
+            d_sgn = struct.unpack("d", sgn)[0] - mean
+            d_sgn = d_sgn / std
             labels.append(d_sgn)
             idx += 1
     except Exception:
@@ -233,6 +246,7 @@ def butter_bandpass_filter(data, lowcut, highcut, fs, order):
     y = lfilter(b, a, data)
     return y
 
+
 def cheby2_bandpass_filter(data, rs, lowcut, highcut, fs, order):
     nyq = 0.5 * fs
     low = lowcut / nyq
@@ -240,7 +254,6 @@ def cheby2_bandpass_filter(data, rs, lowcut, highcut, fs, order):
     b, a = cheby2(order, rs, [low, high], btype='band')
     y = lfilter(b, a, data)
     return y
-
 
 
 if __name__ == '__main__':
@@ -281,19 +294,31 @@ if __name__ == '__main__':
     #         vd, lb = create_file_paths(range(9, 12), cond=cond, cond_typ=i)
     #         for v in vd:
     #             get_meanstd(v)
-    ###############mean&std labels#####################################################################
-    # l_paths = []
-    # for cond in ['lighting', 'movement']:
-    #     if cond == 'lighting':
-    #         n = 6
-    #     else:
-    #         n = 4
-    #     for i in range(n):
-    #         _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-    #         l_paths += lb
-    mean, dev = cal_meanStd_label(LABEL_PATHS)
-    print(mean)
-    print(dev)
+    #########remote mean&std labels#####################################################################
+    dict = {}
+    con = ''
+    col = []
+    for cond in ['lighting', 'movement']:
+        if cond == 'lighting':
+            n = 6
+        else:
+            n = 4
+        for i in range(n):
+            _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+            con, col = cal_meanStd_label(lb)
+            dict[con] = col
+    with open('LabelMeanStddev.pickle', 'wb') as f:
+        pickle.dump(dict, f)
+    f.close()
+    #########local mean&std labels#####################################################################
+    # dict = {}
+    # con = ''
+    # col = []
+    # con, col = cal_meanStd_label(LABEL_PATHS)
+    # dict[con] = col
+    # with open('LabelMeanStddev.pickle', 'wb') as f:
+    #     pickle.dump(dict, f)
+    # f.close()
 #############################check generated labels###########################################
 # li = cvt_labels(1,8)
 # for i in li:
