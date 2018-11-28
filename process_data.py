@@ -12,7 +12,7 @@ import struct
 import scipy
 from scipy import fftpack
 from scipy.signal import butter, cheby2, lfilter
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
@@ -61,8 +61,9 @@ def cvt_hr(labels, duration, fs, lowcut, highcut, order):
     d = np.argmax(f2)
 
     # Plotting periodogram
-    # x1 = freqs2[d]
-    # y1 = max(f2)
+    x1 = freqs2[d]
+    print(x1)
+    y1 = max(f2)
     # plt.figure(3)
     # plt.subplot(2,1,1)
     # plt.plot(freqs2, f2,color='darkmagenta')
@@ -83,7 +84,7 @@ def cvt_hr(labels, duration, fs, lowcut, highcut, order):
     # print("The frequency associated with maximum PSD is", freqs2[d], "Hz")
 
     HeartRate = freqs2[d] * 60
-    print('HR:'+str(HeartRate))
+    #print('HR:'+str(HeartRate))
     return HeartRate
 
 
@@ -153,7 +154,7 @@ def crop_resize_face(video_path, width=112, height=112):
                 # cv2.rectangle(frame, pt1, pt2, (255, 0, 0), 5, 8, 0)
                 h = min(int(1.6 * h), (frame_height - y))
                 frame = frame[y:y + h, x:x + w]
-                # frame = utils.rescale_frame(frame, mean, dev)
+                frame = utils.rescale_frame(frame, mean, dev)
                 frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
                 # cv2.imshow('frame', frame)
                 # cv2.waitKey(0)
@@ -265,11 +266,17 @@ def get_sample(video_path, label_path, clip=1, width=112, height=112, mode='trai
         diff_iterator = nor_diff_clip(video_path, clip=clip, width=width, height=height)
         skip_step = PLE_SAMPLE_RATE / FRAME_RATE
         labels = utils.cvt_sensorSgn(label_path, skip_step)
+        mean, std = get_meanstd(label_path, mode='label')
         start_pos = (clip - 1) * CLIP_SIZE
         end_pos = clip * CLIP_SIZE - 1
         for idx in range(start_pos, end_pos):
             frame, diff = next(diff_iterator)
-            label = float(labels[idx+1] - labels[idx]) 
+            label = float(labels[idx+1] - labels[idx]) - mean
+            label = label / std
+            if label > 1:
+                label = 1
+            if label < -1:
+                label = -1
             #if idx%100 == 0:
                 #print('input frame:')
                 #print(frame[60:63,60:63,:])
@@ -393,7 +400,26 @@ if __name__ == '__main__':
         d_sgn = struct.unpack("d", sgn)[0]
         gt.append(d_sgn)
     binFile.close()
-    hr = test_hr(LABEL_PATHS[0], 30, 30)
-    for rate, g in zip(hr, gt):
+
+    skip_step = PLE_SAMPLE_RATE / FRAME_RATE
+    labels = utils.cvt_sensorSgn(LABEL_PATHS[0], skip_step)
+    mean, std = utils.get_meanstd(LABEL_PATHS[0], mode='label')
+    sgns = []
+    hr_li = []
+    for idx in range(len(labels) - 1):
+        val = float(labels[idx + 1] - labels[idx])
+        val = val - mean
+        val = val / std
+        if val >1:
+            val = 1
+        if val < -1:
+            val = -1
+        sgns.append(val)
+        print(str(labels[idx + 1])+' - '+ str(labels[idx])+' = '+str(val))
+    for idx in range(120 - duration):
+        hr = cvt_hr(sgns[(idx*30):(idx*30+900)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
+        hr_li.append(hr)
+    for rate, g in zip(hr_li, gt):
         print(str(round(rate)) + '  ' + str(g))
+    #test_hr(LABEL_PATHS[0],30,30)
 ###########################################################################

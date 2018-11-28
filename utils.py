@@ -217,14 +217,12 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
     labels = []
     binFile = open(label_path, 'rb')
     idx = 0
-    mean, std = get_meanstd(label_path, mode='label')
     try:
         while True:
             pos = math.floor(idx * skip_step)
             binFile.seek(pos * data_len)
             sgn = binFile.read(data_len)
-            d_sgn = struct.unpack("d", sgn)[0] - mean
-            d_sgn = d_sgn / std
+            d_sgn = struct.unpack("d", sgn)[0]
             labels.append(d_sgn)
             idx += 1
     except Exception:
