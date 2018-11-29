@@ -9,6 +9,7 @@ import loading_model
 import process_data
 import utils
 import math
+import numpy as np
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -36,7 +37,7 @@ class VideoAnalysis(object):
         self.lr = 0.6
         self.batch_size = 32
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
-        self.skip_step = 3000
+        self.skip_step = 300
 
     def get_data(self, video_paths, label_paths, clips, mode='train'):
         print("create generator....")
@@ -107,7 +108,7 @@ class VideoAnalysis(object):
         total_loss = 0
         n_batch = 0
         start_time = time.time()
-        train_gen = self.get_data(self.train_video_paths, self.train_label_paths, [1, 2, 3, 4, 5])
+        train_gen = self.get_data(self.train_video_paths, self.train_label_paths, np.arange(1,50))
         try:
             while True:
                 print("epoch " + str(epoch + 1) + "-" + str(n_batch + 1))
@@ -134,8 +135,8 @@ class VideoAnalysis(object):
                 writer.add_summary(summary, global_step=step)
                 step += 1
                 print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
-                if step % self.skip_step == 0:
-                    saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
+                #if step % self.skip_step == 0:
+                 #   saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
         except StopIteration:
             pass
         print('Average loss at epoch {0}: {1}'.format(epoch, total_loss / n_batch))
@@ -158,17 +159,23 @@ class VideoAnalysis(object):
                                                             self.input_diff: diffs,
                                                             #self.gts: gts,
                                                             self.keep_prob: 1})
+                    pred = pred[0].tolist()
                     ppgs += pred
                     n_test += 1
                     n_pass += 1
                     print('total pred len:'+str(len(pred)))
                     print('total ppg len:'+str(len(ppgs)))
-                    print('n_test:'+str(n_test))
+                    print('pred:')
+                    print(pred)
                     if n_test >= thd:
                         print('cvt ppg >>>>>>>>>>>>')
                         hr = process_data.get_hr(ppgs, self.batch_size, self.duration, fs=FRAME_RATE)
                         accuracy, summary = sess.run([self.accuracy, summary_op], feed_dict={self.hrs: hr,
                                                                                             self.gts: gts})
+                        print('hr:')
+                        print(hr)
+                        print('gt:')
+                        print(gts)
                         total_accuracy += accuracy
                         writer.add_summary(summary, global_step=step)
                         step += 1
@@ -186,10 +193,12 @@ class VideoAnalysis(object):
             saver = tf.train.Saver()
             summary_loss, summary_accuracy = self.create_summary()
             step = self.gstep.eval()
-            # if tf.train.checkpoint_exists('./checkpoint'):
-            #     saver.restore(sess, './checkpoint')
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname('./checkpoint_dict/checkpoint'))
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
+                print('loading stored params...........')
             for epoch in range(n_epoch):
-                step = self.train_one_epoch(sess, writer, saver, summary_loss, epoch, step)
+               # step = self.train_one_epoch(sess, writer, saver, summary_loss, epoch, step)
                 self.eval_once(sess, writer, summary_accuracy, epoch, step)
             writer.close()
 

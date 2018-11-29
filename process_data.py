@@ -19,7 +19,7 @@ PLE_SAMPLE_RATE = 256.0
 FRAME_RATE = 30.0
 VIDEO_DUR = 120
 N_FRAME = 3600
-N_CLIPS = 5
+N_CLIPS = 120
 CLIP_SIZE = int(N_FRAME / N_CLIPS)
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
@@ -62,7 +62,7 @@ def cvt_hr(labels, duration, fs, lowcut, highcut, order):
 
     # Plotting periodogram
     x1 = freqs2[d]
-    print(x1)
+    #print(x1)
     y1 = max(f2)
     # plt.figure(3)
     # plt.subplot(2,1,1)
@@ -84,7 +84,7 @@ def cvt_hr(labels, duration, fs, lowcut, highcut, order):
     # print("The frequency associated with maximum PSD is", freqs2[d], "Hz")
 
     HeartRate = freqs2[d] * 60
-    print('HR:'+str(HeartRate))
+    #print('HR:'+str(HeartRate))
     return HeartRate
 
 

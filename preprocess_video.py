@@ -22,17 +22,20 @@ LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C
 def create_video_clip(video_paths, width=128, height=128):
     for video_path in video_paths:
         ########REMOTE####################################################
-        # print(video_path)
-        # print(os.path.exists(video_path))
-        # path = video_path.split('/')
-        # prob_id = path[4]
-        # cond = path[5].split('_')[0]
+        print(video_path)
+        print(os.path.exists(video_path))
+        path = video_path.split('/')
+        prob_id = path[4]
+        cond = path[5].split('_')[0]
         #######LOCAL####################################################
-        prob_id = 'Proband02'
-        cond = '101'
+        #prob_id = 'Proband02'
+        #cond = '101'
         ##################################################################
         print(cond)
         print(prob_id)
+        if cond == '101' or cond =='102' or cond == '103':
+            print('<<<<<<<<<<<skip>>>>>>>>>>>')
+            continue
         capture = cv2.VideoCapture()
         capture.open(video_path)
         if not capture.isOpened():
@@ -89,4 +92,4 @@ if __name__ == '__main__':
     # vd += v_d
     # create_video_clip(vd)
     ##########3.local-prepro part of videos######################
-    create_video_clip(VIDEO_PATHS)
+    #create_video_clip(VIDEO_PATHS)
