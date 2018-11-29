@@ -12,7 +12,7 @@ import struct
 import scipy
 from scipy import fftpack
 from scipy.signal import butter, cheby2, lfilter
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
@@ -42,27 +42,27 @@ def cvt_hr(labels, duration, fs, lowcut, highcut, order):
     #         pass
     # print(str(len(neg)) + ' - ' + str(len(pos)))
 
-    plt.figure(1)
-    plt.plot(t, labels)
-    plt.title("Unfiltered PPG data")
-    plt.xlabel('Time[sec]')
-    plt.ylabel('PPG data')
-    plt.show()
+    # plt.figure(1)
+    # plt.plot(t, labels)
+    # plt.title("Unfiltered PPG data")
+    # plt.xlabel('Time[sec]')
+    # plt.ylabel('PPG data')
+    # plt.show()
 
     y = utils.butter_bandpass_filter(labels, lowcut, highcut, fs, order)
     # y = cheby2_bandpass_filter(labels, 20, lowcut, highcut, fs, order=4)
-    y = labels
-    plt.figure(2)
-    plt.plot(t, labels, color ='crimson', label='data')
-    plt.plot(t, y, 'g-', linewidth=2, label='filtered data')
-    plt.xlabel('Time [sec]')
-    plt.ylabel('PPG data')
-    plt.title("Bandpass Filtered data for obtaining Heart Rate")
-    plt.grid()
-    plt.legend()
-
-    plt.subplots_adjust(hspace=0.35)
-    plt.show()
+    #y = labels
+    # plt.figure(2)
+    # plt.plot(t, labels, color ='crimson', label='data')
+    # plt.plot(t, y, 'g-', linewidth=2, label='filtered data')
+    # plt.xlabel('Time [sec]')
+    # plt.ylabel('PPG data')
+    # plt.title("Bandpass Filtered data for obtaining Heart Rate")
+    # plt.grid()
+    # plt.legend()
+    #
+    # plt.subplots_adjust(hspace=0.35)
+    # plt.show()
 
     # periodogram
     FFT2 = abs(scipy.fft(y, N))
@@ -77,21 +77,21 @@ def cvt_hr(labels, duration, fs, lowcut, highcut, order):
     x1 = freqs2[d]
     #print(x1)
     y1 = max(f2)
-    plt.figure(3)
-    plt.subplot(2,1,1)
-    plt.plot(freqs2, f2,color='darkmagenta')
-    plt.ylabel("PSD")
-    plt.title('Periodogram for Heart Rate detection')
-    plt.grid()
-    plt.subplot(2,1,2)
-    plt.plot(freqs2,f2,color='turquoise')
-    plt.xlim((0,10))
-    plt.ylim((0,y1+20))
-    plt.text(x1,y1,'*Peak corresponding to Maximum PSD')
-    plt.xlabel('Frequency(Hz)')
-    plt.ylabel('PSD')
-    plt.grid()
-    plt.show()
+    # plt.figure(3)
+    # plt.subplot(2,1,1)
+    # plt.plot(freqs2, f2,color='darkmagenta')
+    # plt.ylabel("PSD")
+    # plt.title('Periodogram for Heart Rate detection')
+    # plt.grid()
+    # plt.subplot(2,1,2)
+    # plt.plot(freqs2,f2,color='turquoise')
+    # plt.xlim((0,10))
+    # plt.ylim((0,y1+20))
+    # plt.text(x1,y1,'*Peak corresponding to Maximum PSD')
+    # plt.xlabel('Frequency(Hz)')
+    # plt.ylabel('PSD')
+    # plt.grid()
+    # plt.show()
 
     # print('Maximum PSD:' , max(f2))
     # print("The frequency associated with maximum PSD is", freqs2[d], "Hz")
@@ -403,60 +403,68 @@ if __name__ == '__main__':
     ############cvt ppg to hr##########################################
     #gt_paths = utils.create_file_paths([2], sensor_sgn=0)
     #labels_paths = utils.create_file_paths([2], sensor_sgn=1)
-    binFile = open(GT_PATHS[0], 'rb')
-    data_len = 8
-    duration = 30
-    skip_step = 16
-    idx = 0
-    gt = []
-    for idx in range(duration, 120):
-        pos = 16 * idx
-        binFile.seek(pos * data_len)
-        sgn = binFile.read(data_len)
-        d_sgn = struct.unpack("d", sgn)[0]
-        gt.append(d_sgn)
-    binFile.close()
-
-    skip_step = PLE_SAMPLE_RATE / FRAME_RATE
-    labels = utils.cvt_sensorSgn(LABEL_PATHS[0], skip_step)
-    mean, std = utils.get_meanstd(LABEL_PATHS[0], mode='label')
-    sgns = []
-    hr_li = []
-    pos = []
-    neg = []
-    zero = []
-    for idx in range(len(labels) - 1):
-        val = float(labels[idx + 1] - labels[idx])
-        val = val - mean
-        val = val / std
-        if val >0.5:
-            val = 1
-        elif val < 0:
-            val = -1
-        else:
-            val = 0
-        sgns.append(val)
-        # if val > 0:
-        #     pos.append(val)
-        # elif val < 0:
-        #     neg.append(val)
-        # else:
-        #     pass
+    ############local:read in ground truth##########################################
+    # binFile = open(GT_PATHS[0], 'rb')
+    # data_len = 8
+    # duration = 30
+    # skip_step = 16
+    # idx = 0
+    # gt = []
+    # for idx in range(duration, 120):
+    #     pos = 16 * idx
+    #     binFile.seek(pos * data_len)
+    #     sgn = binFile.read(data_len)
+    #     d_sgn = struct.unpack("d", sgn)[0]
+    #     gt.append(d_sgn)
+    # binFile.close()
+    ############local:read in ppg##########################################
+    # skip_step = PLE_SAMPLE_RATE / FRAME_RATE
+    # labels = utils.cvt_sensorSgn(LABEL_PATHS[0], skip_step)
+    # mean, std = utils.get_meanstd(LABEL_PATHS[0], mode='label')
+    # sgns = []
+    # hr_li = []
+    # pos = []
+    # neg = []
+    # zero = []
+    # for idx in range(len(labels) - 1):
+    #     val = float(labels[idx + 1] - labels[idx])
+    #     val = val - mean
+    #     val = val / std
+    #     if val > 0.2:
+    #         val = 1
+    #     if val < -0.2:
+    #         val = -1
+    #     elif val > -0.2 and val < 0:
+    #        val = -0.5
+    #     else:
+    #         val = 0
+    #     sgns.append(val)
+    #     if val > 0:
+    #         pos.append(val)
+    #     elif val < 0:
+    #         neg.append(val)
+    #     else:
+    #         pass
     # print(str(len(neg))+' - '+str(len(pos)))
     # print(str(np.mean(neg)) + ' - ' + str(np.mean(pos)))
     #
-    # fig, axs = plt.subplots(1, 2, tight_layout=True)
+    ############local: check cvt hr & gts##########################################
+    # fig, axs = plt.subplots(1, 3, tight_layout=True)
     # axs[0].hist(pos, bins=10)
     # axs[1].hist(neg, bins=10)
-    # plt.title("Unfiltered PPG data")
-    # plt.xlabel('Time[sec]')
-    # plt.ylabel('PPG data')
-    #plt.show()
+    # axs[2].hist(sgns, bins=10)
+    # plt.title("label difference distribution")
+    # plt.xlabel('value')
+    # plt.ylabel('occurance')
+    # plt.show()
+    # for idx in range(120 - duration):
+    #     hr = cvt_hr(sgns[(idx*30):(idx*30+900)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
+    #     hr_li.append(hr)
+    # note = 0
+    # for rate, g in zip(hr_li, gt):
+    #     if abs(rate-g)<1:
+    #         note +=1
+    # print(note/len(hr_li))
 
-    for idx in range(120 - duration):
-        hr = cvt_hr(sgns[(idx*30):(idx*30+900)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
-        hr_li.append(hr)
-    for rate, g in zip(hr_li, gt):
-        print(str(round(rate)) + '  ' + str(g))
     #test_hr(LABEL_PATHS[0],30,30)
 ###########################################################################
