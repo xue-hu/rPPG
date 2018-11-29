@@ -12,7 +12,7 @@ import struct
 import scipy
 from scipy import fftpack
 from scipy.signal import butter, cheby2, lfilter
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
