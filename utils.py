@@ -186,14 +186,14 @@ def get_meanstd(video_path, mode='video'):
         with open('LabelMeanStddev.pickle', 'rb') as file:
             mean_std = pickle.load(file)
     ########remote part########################################
-    # path = video_path.split('/')
-    # u_id = int(path[4][-1])
-    # t_id = int(path[4][-2])
-    # prob_id = t_id * 10 + u_id
-    # cond = path[5].split('_')[0]
+    path = video_path.split('/')
+    u_id = int(path[4][-1])
+    t_id = int(path[4][-2])
+    prob_id = t_id * 10 + u_id
+    cond = path[5].split('_')[0]
     #########local part##########################################
-    cond = '101'
-    prob_id = 0
+    # cond = '101'
+    # prob_id = 0
     #############################################################
     # print(cond + ' ' + str(prob_id) + ':')
     mean, dev = mean_std[cond][prob_id]

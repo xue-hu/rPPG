@@ -9,6 +9,8 @@ import numpy as np
 import cv2
 
 # VGG-19 parameters file
+MODEL = 'classification'
+N_CLASSES = 4
 VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat'
 VGG_FILENAME = 'imagenet-vgg-verydeep-19.mat'
 EXPECTED_BYTES = 534904783
@@ -62,14 +64,17 @@ class NnModel(object):
         print(out.shape)
         setattr(self, (stream_name + '_' + lyr_name), out)
 
-    def fully_connected_layer(self, pre_lyr, out_dims, lyr_name):
+    def fully_connected_layer(self, pre_lyr, out_dims, lyr_name, last_lyr=False):
         _, height, width, depth = pre_lyr.shape.as_list()
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal([height, width, depth, out_dims], stddev=0.4))
             b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros_like([out_dims,], dtype=tf.float32))
             z = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='VALID') + b
             #out = tf.nn.relu(z, name=scope.name)
-            out = tf.nn.tanh(z, name=scope.name)
+            if not last_lyr:
+                out = tf.nn.tanh(z, name=scope.name)
+            else:
+                out = z
         print(lyr_name)
         print(w.shape)
         print(out.shape)
@@ -168,7 +173,10 @@ class NnModel(object):
         self.fully_connected_layer(self.d_pool3, 256, 'fc6')
         self.dropout_layer(self.fc6)
         self.fully_connected_layer(self.fc6, 512, 'fc7')
-        self.fully_connected_layer(self.fc7, 1, 'output')
+        if MODEL == 'regression':
+            self.fully_connected_layer(self.fc7, 1, 'output')
+        else:
+            self.fully_connected_layer(self.fc7, N_CLASSES, 'output', last_lyr=True)
         print("done.")
 
 

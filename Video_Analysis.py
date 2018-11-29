@@ -17,6 +17,8 @@ NUM_LABELS = 3862
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
 FRAME_RATE = 30.0
+MODEL = 'clasification'
+N_CLASSES = 4
 TRAIN_VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 TRAIN_LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 TEST_VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
@@ -60,6 +62,8 @@ class VideoAnalysis(object):
         with tf.name_scope('Dynamic_Input'):
             self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff',
                                          shape=[self.batch_size, self.width, self.height, 3])
+        with tf.name_scope('labels'):
+            self.labels = tf.placeholder(dtype=tf.float32, name='ppg_diff', shape=[self.batch_size, N_CLASSES])
         with tf.name_scope('dropout'):
             self.keep_prob = tf.placeholder(dtype=tf.float32, name='dropout_prob', shape=[])
         self.model = loading_model.NnModel(self.input_img, self.input_diff, self.keep_prob)
@@ -67,14 +71,18 @@ class VideoAnalysis(object):
         self.model.two_stream_vgg_load()
 
     def inference(self):
-        self.pred = tf.reshape(self.model.output, [-1]) 
+        ###########classification#####################################################################
+        self.logits = tf.reshape(self.model.output, shape=[self.batch_size, N_CLASSES])
+        ############regression################################################################
+        self.preds = tf.nn.softmax(self.logits)
 
 
     def loss(self):
         print("crteate loss-Function.....")
         with tf.name_scope('loss'):
-            self.labels = tf.placeholder(dtype=tf.float32, name='input', shape=[self.batch_size, ])
-            self.loss = tf.losses.mean_squared_error(labels=self.labels, predictions=self.pred)
+            ###########classification#####################################################################
+            self.entropy = tf.losses.softmax_cross_entropy(onehot_labels=self.labels, logits=self.logits)
+            self.loss = tf.reduce_mean(self.entropy, name='loss')
 
     def evaluation(self):
         print("create evaluation methods.....")
@@ -108,7 +116,7 @@ class VideoAnalysis(object):
         total_loss = 0
         n_batch = 0
         start_time = time.time()
-        train_gen = self.get_data(self.train_video_paths, self.train_label_paths, np.arange(1,50))
+        train_gen = self.get_data(self.train_video_paths, self.train_label_paths, np.arange(1, 50))
         try:
             while True:
                 print("epoch " + str(epoch + 1) + "-" + str(n_batch + 1))
@@ -120,7 +128,7 @@ class VideoAnalysis(object):
                 #     print(label)
                 #     cv2.waitKey(0)
                 ############################################
-                loss, pred, labels, __, summary = sess.run([self.loss, self.pred, self.labels, self.opt, summary_op],
+                loss, pred, logits, labels, __, summary = sess.run([self.loss, self.preds, self.logits, self.labels, self.opt, summary_op],
                                             feed_dict={self.input_img: frames,
                                                        self.input_diff: diffs,
                                                        self.labels: labels,
@@ -129,8 +137,12 @@ class VideoAnalysis(object):
                 total_loss += loss
                 print('label:')
                 print(labels[:3])
-                print('pred:')
-                print(pred[:3])
+                if N_CLASSES == 1:
+                    print('pred:')
+                    print(logits[:3])
+                else:
+                    print('pred:')
+                    print(pred[:3])
                 n_batch += 1
                 writer.add_summary(summary, global_step=step)
                 step += 1
@@ -155,11 +167,23 @@ class VideoAnalysis(object):
             try:
                 while True:
                     frames, diffs, gts = next(test_gen)
-                    pred = sess.run([self.pred], feed_dict={self.input_img: frames,
+                    pred, logits = sess.run([self.preds, self.logits], feed_dict={self.input_img: frames,
                                                             self.input_diff: diffs,
-                                                            #self.gts: gts,
                                                             self.keep_prob: 1})
-                    pred = pred[0].tolist()
+
+                    if MODEL == 'regression':
+                        pred = logits[0].tolist()
+                    else:
+                        print(pred[:3])
+                        pred = pred.tolist()
+                        pred = np.argmax(pred, axis=1)
+                        print(pred[:3])
+                        pred[pred == 0] = -1
+                        pred[pred == 1] = -0.5
+                        pred[pred == 2] = 0.5
+                        pred[pred == 3] = 1
+                        pred = pred.tolist()
+                        print(pred[:3])
                     ppgs += pred
                     n_test += 1
                     n_pass += 1
@@ -198,7 +222,7 @@ class VideoAnalysis(object):
                 saver.restore(sess, ckpt.model_checkpoint_path)
                 print('loading stored params...........')
             for epoch in range(n_epoch):
-               # step = self.train_one_epoch(sess, writer, saver, summary_loss, epoch, step)
+                step = self.train_one_epoch(sess, writer, saver, summary_loss, epoch, step)
                 self.eval_once(sess, writer, summary_accuracy, epoch, step)
             writer.close()
 
@@ -228,6 +252,6 @@ if __name__ == '__main__':
     te_vd_paths, te_lb_paths = utils.create_file_paths([14], sensor_sgn=0)
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths, img_width=128, img_height=128)
     ######################################################################################
-    #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS)
+    #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS, img_height=128, img_width=128)
     model.build_graph()
     model.train(1)

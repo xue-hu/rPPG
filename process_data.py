@@ -11,8 +11,10 @@ import random
 import struct
 import scipy
 from scipy import fftpack
+import pickle
 from scipy.signal import butter, cheby2, lfilter
 import matplotlib.pyplot as plt
+
 
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
@@ -182,14 +184,14 @@ def crop_resize_face(video_path, width=112, height=112):
 
 def nor_diff_face(video_path, width=112, height=112):
     ###########remote##########################################
-    print(video_path)
-    print(os.path.exists(video_path))
-    path = video_path.split('/')
-    prob_id = path[4]
-    cond = path[5].split('_')[0]
+    # print(video_path)
+    # print(os.path.exists(video_path))
+    # path = video_path.split('/')
+    # prob_id = path[4]
+    # cond = path[5].split('_')[0]
     ###########local###########################################
-    # prob_id = 'Proband02'
-    # cond = '101'
+    prob_id = 'Proband02'
+    cond = '101'
     ###########################################################
     for clip in range(1, int(N_CLIPS+1)):
         scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
@@ -234,14 +236,14 @@ def nor_diff_face(video_path, width=112, height=112):
 
 def nor_diff_clip(video_path, clip=1, width=112, height=112):
     ###########remote##########################################
-    print(video_path)
-    print(os.path.exists(video_path))
-    path = video_path.split('/')
-    prob_id = path[4]
-    cond = path[5].split('_')[0]
+    # print(video_path)
+    # print(os.path.exists(video_path))
+    # path = video_path.split('/')
+    # prob_id = path[4]
+    # cond = path[5].split('_')[0]
     ###########local###########################################
-    # prob_id = 'Proband02'
-    # cond = '101'
+    prob_id = 'Proband02'
+    cond = '101'
     ###########################################################
     scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
     start_pos = (clip - 1) * CLIP_SIZE
@@ -288,11 +290,24 @@ def get_sample(video_path, label_path, clip=1, width=112, height=112, mode='trai
         for idx in range(start_pos, end_pos):
             frame, diff = next(diff_iterator)
             label = float(labels[idx+1] - labels[idx]) - mean
-            label = label / std
-            if label > 1:
-                label = 1
-            if label < -1:
-                label = -1
+            val = label / std
+            ###########regression########################################################
+            # if label > 0.2:
+            #     label = 1
+            # elif label < -0.2:
+            #     label = -1
+            # else:
+            #     label = 0
+            #########classification######################################
+            if val > 0.2:
+                val = [0, 0, 0, 1]
+            elif val < -0.2:
+                val = [1, 0, 0, 0]
+            elif val > -0.2 and val < 0:
+                val = [0, 1, 0, 0]
+            else:
+                val = [0, 0, 1, 0]
+            ############################################################
             #if idx%100 == 0:
                 #print('input frame:')
                 #print(frame[60:63,60:63,:])
@@ -300,15 +315,15 @@ def get_sample(video_path, label_path, clip=1, width=112, height=112, mode='trai
                 #print(diff[60:63,60:63,:])
                 #print('label:')
                 #print(label)
-            yield (frame, diff, label)
+            yield (frame, diff, val)
     else:
         diff_iterator = nor_diff_face(video_path, width=width, height=height)
         skip_step = ECG_SAMPLE_RATE / FRAME_RATE
-        labels = utils.cvt_sensorSgn(label_path, skip_step)
+        gts = utils.cvt_sensorSgn(label_path, skip_step)
         for idx in range(N_FRAME - 1):
             frame, diff = next(diff_iterator)
-            label = float(labels[idx])
-            yield (frame, diff, label)
+            gt = float(gts[idx])
+            yield (frame, diff, gt)
 
 
 def get_batch(video_paths, label_paths, clips, batch_size, width=112, height=112, mode='train'):
@@ -342,10 +357,10 @@ def get_batch(video_paths, label_paths, clips, batch_size, width=112, height=112
             try:
                 while True:
                     while len(frame_batch) < batch_size:
-                        frame, diff, label = next(iterator)
+                        frame, diff, gt = next(iterator)
                         frame_batch.append(frame)
                         diff_batch.append(diff)
-                        label_batch.append(label)
+                        label_batch.append(gt)
                     yield frame_batch, diff_batch, label_batch
                     # print('done one batch.')
                     frame_batch = []
@@ -354,6 +369,66 @@ def get_batch(video_paths, label_paths, clips, batch_size, width=112, height=112
             except StopIteration:
                 continue
 
+
+def cvt_class(m):
+    duration = 30
+    for _, li in m.items():
+        sgns = []
+        rand = []
+        hr_label = []
+        pos = []
+        neg = []
+        for val, hr in li:
+            hr_label.append(hr)
+            if val > 0.2:
+                val = 1
+            elif val < -0.2:
+                val = -1
+            elif val > -0.2 and val < 0:
+               val = -0.5
+            else:
+                val = 0.5
+            if val > 0:
+                pos.append(val)
+            elif val < 0:
+                neg.append(val)
+            else:
+                pass
+            sgns.append(val)
+            seed = random.random()
+            if seed > 0.8:
+                if val != 0:
+                    val = -val
+                else:
+                    val = seed
+            rand.append(val)
+        pred = []
+        label = []
+        gt = []
+        for idx in range(120 - duration):
+            hr = cvt_hr(sgns[(idx * 30):(idx * 30 + 30 * 30)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
+            pred_hr = cvt_hr(rand[(idx * 30):(idx * 30 + 30 * 30)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
+            pred.append(pred_hr)
+            label.append(hr)
+            gt.append(hr_label[(idx + 30) * 30])
+        note = 0
+        accur = 0
+        for rate, g, ac in zip(gt, label, pred):
+            if abs(rate - g) < 5:
+                note += 1
+            if abs(rate - ac) < 5:
+                accur += 1
+        print(str(note / len(pred)) + ' - ' + str(accur / len(pred)))
+
+    ############local: check cvt hr & gts##########################################
+    # fig, axs = plt.subplots(1, 3, tight_layout=True)
+    # axs[0].hist(pos, bins=10)
+    # axs[1].hist(neg, bins=10)
+    # axs[2].hist(sgns, bins=10)
+    # plt.title("label difference distribution")
+    # plt.xlabel('value')
+    # plt.ylabel('occurance')
+    # plt.show()
 
 if __name__ == '__main__':
     ##########batched labeled-samples######################
@@ -404,67 +479,12 @@ if __name__ == '__main__':
     #gt_paths = utils.create_file_paths([2], sensor_sgn=0)
     #labels_paths = utils.create_file_paths([2], sensor_sgn=1)
     ############local:read in ground truth##########################################
-    # binFile = open(GT_PATHS[0], 'rb')
-    # data_len = 8
-    # duration = 30
-    # skip_step = 16
-    # idx = 0
-    # gt = []
-    # for idx in range(duration, 120):
-    #     pos = 16 * idx
-    #     binFile.seek(pos * data_len)
-    #     sgn = binFile.read(data_len)
-    #     d_sgn = struct.unpack("d", sgn)[0]
-    #     gt.append(d_sgn)
-    # binFile.close()
     ############local:read in ppg##########################################
-    # skip_step = PLE_SAMPLE_RATE / FRAME_RATE
-    # labels = utils.cvt_sensorSgn(LABEL_PATHS[0], skip_step)
-    # mean, std = utils.get_meanstd(LABEL_PATHS[0], mode='label')
-    # sgns = []
-    # hr_li = []
-    # pos = []
-    # neg = []
-    # zero = []
-    # for idx in range(len(labels) - 1):
-    #     val = float(labels[idx + 1] - labels[idx])
-    #     val = val - mean
-    #     val = val / std
-    #     if val > 0.2:
-    #         val = 1
-    #     if val < -0.2:
-    #         val = -1
-    #     elif val > -0.2 and val < 0:
-    #        val = -0.5
-    #     else:
-    #         val = 0
-    #     sgns.append(val)
-    #     if val > 0:
-    #         pos.append(val)
-    #     elif val < 0:
-    #         neg.append(val)
-    #     else:
-    #         pass
-    # print(str(len(neg))+' - '+str(len(pos)))
-    # print(str(np.mean(neg)) + ' - ' + str(np.mean(pos)))
-    #
-    ############local: check cvt hr & gts##########################################
-    # fig, axs = plt.subplots(1, 3, tight_layout=True)
-    # axs[0].hist(pos, bins=10)
-    # axs[1].hist(neg, bins=10)
-    # axs[2].hist(sgns, bins=10)
-    # plt.title("label difference distribution")
-    # plt.xlabel('value')
-    # plt.ylabel('occurance')
-    # plt.show()
-    # for idx in range(120 - duration):
-    #     hr = cvt_hr(sgns[(idx*30):(idx*30+900)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
-    #     hr_li.append(hr)
-    # note = 0
-    # for rate, g in zip(hr_li, gt):
-    #     if abs(rate-g)<1:
-    #         note +=1
-    # print(note/len(hr_li))
+    with open('Pleth.pickle', 'rb') as f:
+        m = pickle.load(f)
+    f.close()
+    cvt_class(m)
 
-    #test_hr(LABEL_PATHS[0],30,30)
+
+
 ###########################################################################
