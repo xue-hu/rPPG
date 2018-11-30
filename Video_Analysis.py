@@ -36,7 +36,7 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.duration = 30
-        self.lr = 0.6
+        self.lr = 0.01
         self.batch_size = 32
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 300
@@ -96,14 +96,19 @@ class VideoAnalysis(object):
 
     def optimizer(self):
         print("crteate optimizer.....")
-        self.opt = tf.train.AdadeltaOptimizer(self.lr).minimize(self.loss, global_step=self.gstep)
+        optimizer = tf.train.AdadeltaOptimizer(self.lr)
+        self.opt = optimizer.minimize(self.loss, global_step=self.gstep)
+        self.grads = optimizer.compute_gradients(self.loss)
 
     def create_summary(self):
         print("crteate summary.....")
         summary_loss = tf.summary.scalar('loss', self.loss)
         summary_accuracy = tf.summary.scalar('accuracy', self.accuracy)
+        for grad, var in self.grads:
+            summary_grad = tf.summary.histogram(var.name+'/gradient', grad)
         #summary_op = tf.summary.merge_all()
-        return summary_loss, summary_accuracy
+        summary = tf.summary.merge([summary_loss, summary_grad])
+        return summary, summary_accuracy
 
     def build_graph(self):
         self.loading_model()
@@ -128,7 +133,7 @@ class VideoAnalysis(object):
                 #     print(label)
                 #     cv2.waitKey(0)
                 ############################################
-                loss, pred, logits, labels, __, summary = sess.run([self.loss, self.preds, self.logits, self.labels, self.opt, summary_op],
+                loss, grads, pred, logits, labels, __, summary = sess.run([self.loss, self.grads, self.preds, self.logits, self.labels, self.opt, summary_op],
                                             feed_dict={self.input_img: frames,
                                                        self.input_diff: diffs,
                                                        self.labels: labels,
@@ -143,6 +148,10 @@ class VideoAnalysis(object):
                 else:
                     print('pred:')
                     print(pred[:3])
+                if step%100 == 0:
+                    print('grads:')
+                    for g,v in grads:
+                        print(str(g)+' - '+str(v))
                 n_batch += 1
                 writer.add_summary(summary, global_step=step)
                 step += 1
@@ -248,10 +257,10 @@ if __name__ == '__main__':
     s_p = [2, 3, 4, 6, 7, 9, 10]
     p = range(12, 15)
     s_p += p
-    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 4, 5, 6, 10, 12, 13])
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 4, 5, 6, 10, 12, 13, 15, 16, 17])
     te_vd_paths, te_lb_paths = utils.create_file_paths([14], sensor_sgn=0)
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths, img_width=128, img_height=128)
     ######################################################################################
     #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS, img_height=128, img_width=128)
     model.build_graph()
-    model.train(1)
+    model.train(100)
