@@ -396,7 +396,7 @@ def cvt_class(m):
                 pass
             sgns.append(val)
             seed = random.random()
-            if seed > 0.8:
+            if seed > 0.85:
                 if val != 0:
                     val = -val
                 else:

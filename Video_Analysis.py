@@ -104,8 +104,7 @@ class VideoAnalysis(object):
         print("crteate summary.....")
         summary_loss = tf.summary.scalar('loss', self.loss)
         summary_accuracy = tf.summary.scalar('accuracy', self.accuracy)
-        for grad, var in self.grads:
-            summary_grad = tf.summary.histogram(var.name+'/gradient', grad)
+        summary_grad = tf.summary.merge([tf.summary.histogram("%s-grad" % g[1].name, g[0]) for g in self.grads])
         #summary_op = tf.summary.merge_all()
         summary = tf.summary.merge([summary_loss, summary_grad])
         return summary, summary_accuracy
@@ -133,11 +132,13 @@ class VideoAnalysis(object):
                 #     print(label)
                 #     cv2.waitKey(0)
                 ############################################
-                loss, grads, pred, logits, labels, __, summary = sess.run([self.loss, self.grads, self.preds, self.logits, self.labels, self.opt, summary_op],
+                loss, grads, pred, logits, labels, __, summary = sess.run([self.loss, self.grads,
+                                                                           self.preds, self.logits,
+                                                                           self.labels, self.opt,
+                                                                           summary_op],
                                             feed_dict={self.input_img: frames,
                                                        self.input_diff: diffs,
                                                        self.labels: labels,
-                                                  
                                                        self.keep_prob: 0.9})
                 total_loss += loss
                 print('label:')
@@ -148,10 +149,6 @@ class VideoAnalysis(object):
                 else:
                     print('pred:')
                     print(pred[:3])
-                if step%100 == 0:
-                    print('grads:')
-                    for g,v in grads:
-                        print(str(g)+' - '+str(v))
                 n_batch += 1
                 writer.add_summary(summary, global_step=step)
                 step += 1
@@ -198,17 +195,13 @@ class VideoAnalysis(object):
                     n_pass += 1
                     print('total pred len:'+str(len(pred)))
                     print('total ppg len:'+str(len(ppgs)))
-                    print('pred:')
-                    print(pred)
                     if n_test >= thd:
                         print('cvt ppg >>>>>>>>>>>>')
                         hr = process_data.get_hr(ppgs, self.batch_size, self.duration, fs=FRAME_RATE)
                         accuracy, summary = sess.run([self.accuracy, summary_op], feed_dict={self.hrs: hr,
                                                                                             self.gts: gts})
-                        print('hr:')
-                        print(hr)
-                        print('gt:')
-                        print(gts)
+                        print('hr:'+str(hr))
+                        print('gt:'+str(gts))
                         total_accuracy += accuracy
                         writer.add_summary(summary, global_step=step)
                         step += 1
@@ -257,7 +250,7 @@ if __name__ == '__main__':
     s_p = [2, 3, 4, 6, 7, 9, 10]
     p = range(12, 15)
     s_p += p
-    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 4, 5, 6, 10, 12, 13, 15, 16, 17])
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 4, 5, 6])#, 10, 12, 13, 15, 16, 17])
     te_vd_paths, te_lb_paths = utils.create_file_paths([14], sensor_sgn=0)
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths, img_width=128, img_height=128)
     ######################################################################################
