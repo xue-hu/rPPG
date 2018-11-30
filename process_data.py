@@ -184,14 +184,14 @@ def crop_resize_face(video_path, width=112, height=112):
 
 def nor_diff_face(video_path, width=112, height=112):
     ###########remote##########################################
-    # print(video_path)
-    # print(os.path.exists(video_path))
-    # path = video_path.split('/')
-    # prob_id = path[4]
-    # cond = path[5].split('_')[0]
+    print(video_path)
+    print(os.path.exists(video_path))
+    path = video_path.split('/')
+    prob_id = path[4]
+    cond = path[5].split('_')[0]
     ###########local###########################################
-    prob_id = 'Proband02'
-    cond = '101'
+   # prob_id = 'Proband02'
+    #cond = '101'
     ###########################################################
     for clip in range(1, int(N_CLIPS+1)):
         scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
@@ -236,14 +236,14 @@ def nor_diff_face(video_path, width=112, height=112):
 
 def nor_diff_clip(video_path, clip=1, width=112, height=112):
     ###########remote##########################################
-    # print(video_path)
-    # print(os.path.exists(video_path))
-    # path = video_path.split('/')
-    # prob_id = path[4]
-    # cond = path[5].split('_')[0]
+    print(video_path)
+    print(os.path.exists(video_path))
+    path = video_path.split('/')
+    prob_id = path[4]
+    cond = path[5].split('_')[0]
     ###########local###########################################
-    prob_id = 'Proband02'
-    cond = '101'
+   # prob_id = 'Proband02'
+    #cond = '101'
     ###########################################################
     scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
     start_pos = (clip - 1) * CLIP_SIZE

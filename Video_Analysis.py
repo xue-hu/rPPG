@@ -74,7 +74,6 @@ class VideoAnalysis(object):
         ###########classification#####################################################################
         self.logits = tf.reshape(self.model.output, shape=[self.batch_size, N_CLASSES])
         ############regression################################################################
-        self.preds = tf.nn.softmax(self.logits)
 
 
     def loss(self):
@@ -86,28 +85,35 @@ class VideoAnalysis(object):
 
     def evaluation(self):
         print("create evaluation methods.....")
+        with tf.name_scope('predict'):
+            self.preds = tf.nn.softmax(self.logits)
+            correct_preds = tf.equal(tf.argmax(self.preds, 1), tf.argmax(self.labels, 1))
+            n_match = tf.reduce_sum(tf.cast(correct_preds, tf.float32))
+            self.ppg_accuracy = tf.truediv(n_match, tf.cast(self.batch_size, tf.float32))
         with tf.name_scope('accuracy'):
             self.hrs = tf.placeholder(dtype=tf.float32, name='pred_hr', shape=[self.batch_size, ])
             self.gts = tf.placeholder(dtype=tf.float32, name='ground_truth', shape=[self.batch_size, ])
             diff = tf.abs(self.hrs - self.gts)
             indicator = tf.where(diff < 5)
-            self.accuracy = tf.truediv(tf.size(indicator), self.batch_size)
+            total_match = tf.cast(tf.size(indicator), tf.float32)
+            self.hr_accuracy = tf.truediv(total_match, tf.cast(self.batch_size, tf.float32))
             #self.accuracy = tf.losses.mean_squared_error(labels=self.labels, predictions=self.pred)/ self.batch_size
 
     def optimizer(self):
         print("crteate optimizer.....")
         optimizer = tf.train.AdadeltaOptimizer(self.lr)
-        self.opt = optimizer.minimize(self.loss, global_step=self.gstep)
         self.grads = optimizer.compute_gradients(self.loss)
+        self.opt = optimizer.apply_gradients(self.grads, global_step=self.gstep)
 
     def create_summary(self):
         print("crteate summary.....")
         summary_loss = tf.summary.scalar('loss', self.loss)
-        summary_accuracy = tf.summary.scalar('accuracy', self.accuracy)
+        summary_ppg_accuracy = tf.summary.scalar('ppg_accuracy', self.ppg_accuracy)
+        summary_hr_accuracy = tf.summary.scalar('hr_accuracy', self.hr_accuracy)
         summary_grad = tf.summary.merge([tf.summary.histogram("%s-grad" % g[1].name, g[0]) for g in self.grads])
         #summary_op = tf.summary.merge_all()
-        summary = tf.summary.merge([summary_loss, summary_grad])
-        return summary, summary_accuracy
+        summary = tf.summary.merge([summary_loss, summary_grad, summary_ppg_accuracy])
+        return summary, summary_hr_accuracy
 
     def build_graph(self):
         self.loading_model()
@@ -198,7 +204,7 @@ class VideoAnalysis(object):
                     if n_test >= thd:
                         print('cvt ppg >>>>>>>>>>>>')
                         hr = process_data.get_hr(ppgs, self.batch_size, self.duration, fs=FRAME_RATE)
-                        accuracy, summary = sess.run([self.accuracy, summary_op], feed_dict={self.hrs: hr,
+                        accuracy, summary = sess.run([self.hr_accuracy, summary_op], feed_dict={self.hrs: hr,
                                                                                             self.gts: gts})
                         print('hr:'+str(hr))
                         print('gt:'+str(gts))

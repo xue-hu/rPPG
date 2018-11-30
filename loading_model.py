@@ -40,7 +40,7 @@ class NnModel(object):
         w_init, b_init = self.__vgg_weights(lyr_idx, lyr_name)
         w_init = tf.convert_to_tensor(w_init, dtype=tf.float32)
         b_init = tf.convert_to_tensor(b_init, dtype=tf.float32)
-        with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
+        with tf.variable_scope((stream_name+'_'+lyr_name), reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable(name="weight", dtype=tf.float32, initializer=w_init)
             b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init)
             conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
@@ -50,17 +50,20 @@ class NnModel(object):
         print(out.shape)
         setattr(self, (stream_name + '_' + lyr_name), out)
 
-    def conv2d_tanh(self, pre_lyr, lyr_idx, lyr_name, stream_name='d'):
+    def conv2d_tanh(self, pre_lyr, lyr_idx, out_dims, lyr_name, stream_name='d'):
         w_init, b_init = self.__vgg_weights(lyr_idx, lyr_name)
         w_init = tf.convert_to_tensor(w_init, dtype=tf.float32)
         b_init = tf.convert_to_tensor(b_init, dtype=tf.float32)
-        with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
+        #_, height, width, depth = pre_lyr.shape.as_list()
+        with tf.variable_scope((stream_name+'_'+lyr_name), reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable(name="weight", dtype=tf.float32, initializer=w_init)
             b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init)
+            #w = tf.get_variable("weight", dtype=tf.float32, initializer=tf.random_normal([height, width, depth, out_dims], stddev=1))
+            #b = tf.get_variable("bias", dtype=tf.float32, initializer=tf.zeros_like([out_dims,], dtype=tf.float32))
             conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
             out = tf.nn.tanh((conv + b), name=scope.name)
         print(lyr_name)
-        print(w_init.shape)
+        print(w.shape)
         print(out.shape)
         setattr(self, (stream_name + '_' + lyr_name), out)
 
@@ -113,22 +116,23 @@ class NnModel(object):
     def two_stream_vgg_load(self):
         print("begin to construct two stream vgg......")
 
-        self.conv2d_tanh(self.input_diff, 0, 'conv1_1')
-        self.conv2d_tanh(self.d_conv1_1, 2, 'conv1_2')
-        self.conv2d_tanh(self.input_img, 0, 'conv1_1', stream_name='s')
-        self.conv2d_tanh(self.s_conv1_1, 2, 'conv1_2', stream_name='s')
+        self.conv2d_tanh(self.input_diff, 0,32, 'conv1_1')
+        self.conv2d_tanh(self.d_conv1_1, 2, 32, 'conv1_2')
+        self.conv2d_tanh(self.input_img, 0, 32, 'conv1_1', stream_name='s')
+        self.conv2d_tanh(self.s_conv1_1, 2, 32, 'conv1_2', stream_name='s')
         self.attention_layer(self.d_conv1_2, self.s_conv1_2, 'd_conv1_2', 's_conv1_2')
         self.avgpool(self.atten_conv1_2, 'pool1')
         self.avgpool(self.s_conv1_2, 'pool1', stream_name='s')
         self.dropout_layer(self.d_pool1)
+        self.dropout_layer(self.s_pool1)
 
-        self.conv2d_tanh(self.d_pool1, 5, 'conv2_1')
-        self.conv2d_tanh(self.d_conv2_1, 7, 'conv2_2')
-        self.conv2d_tanh(self.s_pool1, 5, 'conv2_1', stream_name='s')
-        self.conv2d_tanh(self.s_conv2_1, 7, 'conv2_2', stream_name='s')
+        self.conv2d_tanh(self.d_pool1, 5, 64, 'conv2_1')
+        self.conv2d_tanh(self.d_conv2_1, 7, 64, 'conv2_2')
+        self.conv2d_tanh(self.s_pool1, 5, 64, 'conv2_1', stream_name='s')
+        self.conv2d_tanh(self.s_conv2_1, 7, 64, 'conv2_2', stream_name='s')
         self.attention_layer(self.d_conv2_2, self.s_conv2_2, 'd_conv2_2', 's_conv2_2')
         self.avgpool(self.atten_conv2_2, 'pool2')
-        self.avgpool(self.s_conv2_2, 'pool2', stream_name='s')
+        #self.avgpool(self.s_conv2_2, 'pool2', stream_name='s')
         self.dropout_layer(self.d_pool2)
 
        # self.conv2d_tanh(self.d_pool2, 10, 'conv3_1')
@@ -170,9 +174,9 @@ class NnModel(object):
         # self.dropout_layer(self.d_pool5)
         # self.avgpool(self.s_conv5_4, 'pool5', stream_name='s')
 
-        self.fully_connected_layer(self.d_pool2, 256, 'fc6')
+        self.fully_connected_layer(self.d_pool2, 64, 'fc6')
         self.dropout_layer(self.fc6)
-        self.fully_connected_layer(self.fc6, 512, 'fc7')
+        self.fully_connected_layer(self.fc6, 128, 'fc7')
         if MODEL == 'regression':
             self.fully_connected_layer(self.fc7, 1, 'output')
         else:
