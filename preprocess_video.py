@@ -7,6 +7,7 @@ import cv2
 import utils
 import numpy as np
 import math
+import pickle
 
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
@@ -116,7 +117,7 @@ if __name__ == '__main__':
     #     else:
     #         n = 4
     #     for i in range(n):
-    _, lb = create_file_paths(range(1, 27))
+    _, lb = utils.create_file_paths(range(1, 27))
     s_dict = get_remote_label(lb)
     with open('Pleth.pickle', 'wb') as f:
         pickle.dump(s_dict, f)
