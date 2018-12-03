@@ -406,38 +406,38 @@ def cvt_class(m):
                 else:
                     val = seed
             rand.append(val)
-        #print(idx)
-        # mean = np.mean(sgns)
-        # std = np.std(sgns)
-        # print(mean)
-        # print(std)
+        print(idx)
+        mean = np.mean(sgns)
+        std = np.std(sgns)
+        print(mean)
+        print(std)
         idx += 1
         # plt.hist(sgns, bins=20)
         # plt.title("all label difference distribution")
         # plt.xlabel('value')
         # plt.ylabel('occurance')
         # plt.show()
-        pred = []
-        label = []
-        gt = []
-        for idx in range(120 - duration):
-            hr = cvt_hr(sgns[(idx * 30):(idx * 30 + 30 * 30)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
-            pred_hr = cvt_hr(rand[(idx * 30):(idx * 30 + 30 * 30)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
-            pred.append(pred_hr)
-            label.append(hr)
-            gt.append(hr_label[(idx + 30) * 30])
-        note = 0
-        accur = 0
-        for rate, g, ac in zip(gt, label, pred):
-            if abs(rate - g) < 5:
-                note += 1
-            if abs(rate - ac) < 5:
-                accur += 1
-        print(str(note / len(pred)) + ' - ' + str(accur / len(pred)))
-    mean = np.mean(all)
-    std = np.std(all)
-    print(mean)
-    print(std)
+    #     pred = []
+    #     label = []
+    #     gt = []
+    #     for idx in range(120 - duration):
+    #         hr = cvt_hr(sgns[(idx * 30):(idx * 30 + 30 * 30)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
+    #         pred_hr = cvt_hr(rand[(idx * 30):(idx * 30 + 30 * 30)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
+    #         pred.append(pred_hr)
+    #         label.append(hr)
+    #         gt.append(hr_label[(idx + 30) * 30])
+    #     note = 0
+    #     accur = 0
+    #     for rate, g, ac in zip(gt, label, pred):
+    #         if abs(rate - g) < 5:
+    #             note += 1
+    #         if abs(rate - ac) < 5:
+    #             accur += 1
+    #     print(str(note / len(pred)) + ' - ' + str(accur / len(pred)))
+    # mean = np.mean(all)
+    # std = np.std(all)
+    # print(mean)
+    # print(std)
     ############local: check cvt hr & gts##########################################
     # plt.hist(all, bins=20)
     # plt.title("all label difference distribution")

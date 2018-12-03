@@ -16,8 +16,6 @@ from scipy.signal import butter, cheby2, lfilter
 
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
-LABEL_MEAN = 390.04378353
-LABEL_STD = 148.0124269
 
 
 def download(down_link, file_path, expected_bytes):
@@ -120,7 +118,6 @@ def cal_meanStd_label(label_paths, data_len=8):
         for idx in range(len(labels) - 1):
             val = float(labels[idx + 1] - labels[idx])
             file_label.append(val)
-        print('file label len:')
         mean = np.mean(file_label)
         std = np.std(file_label)
         sgn_li.append((mean, std))
