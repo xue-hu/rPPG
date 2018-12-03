@@ -325,6 +325,7 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
     diff_batch = []
     label_batch = []
     gt_batch = []
+    sample_li = []
     random.shuffle(clips)
     paths = list(zip(video_paths, label_paths, gt_paths))
     if mode == 'train':
@@ -334,8 +335,10 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
                 iterator = get_sample(video_path, label_path, gt_path, clip=clip, width=width, height=height, mode=mode)
                 try:
                     while True:
-                        while len(frame_batch) < batch_size:
-                            frame, diff, label, gt = next(iterator)
+                        while len(sample_li) < batch_size:
+                            sample_li.append(next(iterator))
+                        random.shuffle(sample_li)
+                        for (frame, diff, label, gt) in sample_li:
                             frame_batch.append(frame)
                             diff_batch.append(diff)
                             label_batch.append(label)
@@ -346,6 +349,7 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
                         diff_batch = []
                         label_batch = []
                         gt_batch = []
+                        sample_li = []
                 except StopIteration:
                     continue
     else:

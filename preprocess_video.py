@@ -75,16 +75,27 @@ def create_video_clip(video_paths, width=128, height=128):
         capture.release()
 
 
+def get_remote_label(label_paths):
+    sgns = []
+    skip_step = 256.0 / 30.0
+    for label_path in label_paths:
+        labels = utils.cvt_sensorSgn(label_path, skip_step)
+        for idx in range(len(labels) - 1):
+            val = float(labels[idx + 1] - labels[idx])
+            sgns.append(val)
+    return sgns
+
+
 if __name__ == '__main__':
     #########1.remote-prepro all videos######################
-    for cond in ['lighting', 'movement']:
-        if cond == 'lighting':
-            n = 6
-        else:
-            n = 4
-        for i in range(n):
-            vd, _ = utils.create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-            create_video_clip(vd)
+    # for cond in ['lighting', 'movement']:
+    #     if cond == 'lighting':
+    #         n = 6
+    #     else:
+    #         n = 4
+    #     for i in range(n):
+    #         vd, _ = utils.create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+    #         create_video_clip(vd)
     # create_video_clip(VIDEO_PATHS)
     #########2.remote-prepro part of videos######################
     # vd, _ = utils.create_file_paths([9, 10])
@@ -93,3 +104,17 @@ if __name__ == '__main__':
     # create_video_clip(vd)
     ##########3.local-prepro part of videos######################
     #create_video_clip(VIDEO_PATHS)
+    ############get remote ppg-diff#########################################
+    dict = {}
+    for cond in ['lighting', 'movement']:
+        if cond == 'lighting':
+            n = 6
+        else:
+            n = 4
+        for i in range(n):
+            _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+            sgn = get_remote_label(lb)
+            dict['label'] = sgn
+    with open('Pleth.pickle', 'wb') as f:
+        pickle.dump(dict, f)
+    f.close()

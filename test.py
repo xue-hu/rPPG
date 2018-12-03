@@ -32,39 +32,8 @@ GT_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/
 #    print(v+' '+l+' '+str(c))
 
 
-############get remote labels##########################################
-# def get_remote_label(label_paths):
-#     sgns = []
-#     skip_step = 256.0 / 30.0
-#     for label_path in label_paths:
-#         labels = utils.cvt_sensorSgn(label_path, skip_step)
-#         mean, std = utils.get_meanstd(label_path, mode='label')
-#         for idx in range(len(labels) - 1):
-#             val = float(labels[idx + 1] - labels[idx])
-#             val = val - mean
-#             val = val / std
-#             if val > 0.5:
-#                 val = 1
-#             elif val < 0:
-#                 val = -1
-#             else:
-#                 val = 0
-#             sgns.append(val)
-#     return sgns
-#
-# dict = {}
-# for cond in ['lighting', 'movement']:
-#     if cond == 'lighting':
-#         n = 6
-#     else:
-#         n = 4
-#     for i in range(n):
-#         _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-#         sgn = get_remote_label(lb)
-#         dict['label'] = sgn
-# with open('Label.pickle', 'wb') as f:
-#     pickle.dump(dict, f)
-# f.close()
+
+
 ############check label diff distribution##########################################
 with open('Pleth.pickle', 'rb') as f:
     m = pickle.load(f)
