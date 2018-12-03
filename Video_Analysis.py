@@ -17,22 +17,26 @@ NUM_LABELS = 3862
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
 FRAME_RATE = 30.0
-MODEL = 'clasification'
+MODEL = 'classification'
 N_CLASSES = 4
 TRAIN_VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 TRAIN_LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
+TRAIN_GT_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/6_Pulse.bin']
 TEST_VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 TEST_LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
+TEST_GT_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/6_Pulse.bin']
 
 
 class VideoAnalysis(object):
-    def __init__(self, train_video_paths, train_label_paths,
-                 test_video_paths, test_label_paths,
+    def __init__(self, train_video_paths, train_label_paths, train_gt_paths,
+                 test_video_paths, test_label_paths, test_gt_paths,
                  img_width, img_height):
         self.train_video_paths = train_video_paths
         self.train_label_paths = train_label_paths
+        self.train_gt_paths = train_gt_paths
         self.test_video_paths = test_video_paths
         self.test_label_paths = test_label_paths
+        self.test_gt_paths = test_gt_paths
         self.width = img_width
         self.height = img_height
         self.duration = 30
@@ -41,9 +45,9 @@ class VideoAnalysis(object):
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 700
 
-    def get_data(self, video_paths, label_paths, clips, mode='train'):
+    def get_data(self, video_paths, label_paths, gt_paths, clips, mode='train'):
         print("create generator....")
-        batch_gen = process_data.get_batch(video_paths, label_paths, clips, self.batch_size,
+        batch_gen = process_data.get_batch(video_paths, label_paths, gt_paths, clips, self.batch_size,
                                            width=self.width, height=self.height, mode=mode)
         return batch_gen
 
@@ -111,9 +115,9 @@ class VideoAnalysis(object):
         summary_ppg_accuracy = tf.summary.scalar('ppg_accuracy', self.ppg_accuracy)
         summary_hr_accuracy = tf.summary.scalar('hr_accuracy', self.hr_accuracy)
         summary_grad = tf.summary.merge([tf.summary.histogram("%s-grad" % g[1].name, g[0]) for g in self.grads])
-        #summary_op = tf.summary.merge_all()
-        summary = tf.summary.merge([summary_loss, summary_grad, summary_ppg_accuracy])
-        return summary, summary_hr_accuracy
+        summary_train = tf.summary.merge([summary_loss, summary_ppg_accuracy, summary_grad])
+        summary_test = tf.summary.merge([summary_loss, summary_ppg_accuracy, summary_hr_accuracy])
+        return summary_train, summary_test
 
     def build_graph(self):
         self.loading_model()
@@ -126,11 +130,11 @@ class VideoAnalysis(object):
         total_loss = 0
         n_batch = 0
         start_time = time.time()
-        train_gen = self.get_data(self.train_video_paths, self.train_label_paths, np.arange(1, 50))
+        train_gen = self.get_data(self.train_video_paths, self.train_label_paths, self.train_gt_paths, np.arange(1, 50))
         try:
             while True:
                 print("epoch " + str(epoch + 1) + "-" + str(n_batch + 1))
-                (frames, diffs, labels) = next(train_gen)
+                (frames, diffs, labels, gts) = next(train_gen)
                 ##########testing the generator##############
                 # for frame, diff, label in zip(frames, diffs, labels):
                 #     cv2.imshow('face', frame)
@@ -138,7 +142,7 @@ class VideoAnalysis(object):
                 #     print(label)
                 #     cv2.waitKey(0)
                 ############################################
-                loss, grads, pred, logits, labels, __, summary = sess.run([self.loss, self.grads,
+                loss, _, pred, logits, labels, __, summary = sess.run([self.loss, self.grads,
                                                                            self.preds, self.logits,
                                                                            self.labels, self.opt,
                                                                            summary_op],
@@ -172,15 +176,18 @@ class VideoAnalysis(object):
         total_accuracy = 0
         n_pass = 0
         thd = math.ceil(self.duration*FRAME_RATE / self.batch_size) + 1
-        for test_video_path, test_label_path in zip(self.test_video_paths, self.test_label_paths):
-            test_gen = self.get_data([test_video_path], [test_label_path], [1, 2], mode='test')
+        for test_video_path, test_label_path, test_gt_path in zip(self.test_video_paths,
+                                                                  self.test_label_paths, self.test_gt_paths):
+            test_gen = self.get_data([test_video_path], [test_label_path], [test_gt_path], [1, 2], mode='test')
             n_test = 0
             ppgs = []
             try:
                 while True:
-                    frames, diffs, gts = next(test_gen)
+                    frames, diffs, labels, gts = next(test_gen)
                     pred, logits = sess.run([self.preds, self.logits], feed_dict={self.input_img: frames,
                                                             self.input_diff: diffs,
+                                                            self.labels: labels,
+                                                            self.gts: gts,
                                                             self.keep_prob: 1})
 
                     if MODEL == 'regression':
@@ -204,8 +211,13 @@ class VideoAnalysis(object):
                     if n_test >= thd:
                         print('cvt ppg >>>>>>>>>>>>')
                         hr = process_data.get_hr(ppgs, self.batch_size, self.duration, fs=FRAME_RATE)
-                        accuracy, summary = sess.run([self.hr_accuracy, summary_op], feed_dict={self.hrs: hr,
-                                                                                            self.gts: gts})
+                        accuracy, summary = sess.run([self.hr_accuracy, summary_op], feed_dict={
+                                                                                            self.input_img: frames,
+                                                                                            self.input_diff: diffs,
+                                                                                            self.labels: labels,
+                                                                                            self.hrs: hr,
+                                                                                            self.gts: gts,
+                                                                                            self.keep_prob: 1})
                         print('hr:'+str(hr))
                         print('gt:'+str(gts))
                         total_accuracy += accuracy
@@ -256,10 +268,15 @@ if __name__ == '__main__':
     s_p = [2, 3, 4, 6, 7, 9, 10]
     p = range(12, 15)
     s_p += p
-    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 4, 5, 6, 10, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 26])
-    te_vd_paths, te_lb_paths = utils.create_file_paths([14], sensor_sgn=0)
-    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths, img_width=128, img_height=128)
+    temp = [2, 4, 5, 6, 10, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 26]
+    test = [14]
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths(temp)
+    _, tr_gt_paths = utils.create_file_paths(temp, sensor_sng=0)
+    te_vd_paths, te_lb_paths = utils.create_file_paths(test)
+    _, te_gt_paths = utils.create_file_paths(test, sensor_sgn=0)
+    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, tr_gt_paths, te_vd_paths, te_lb_paths, te_gt_paths, img_width=128, img_height=128)
     ######################################################################################
-    #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS, img_height=128, img_width=128)
+    #model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TRAIN_GT_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS,
+      #                    TEST_GT_PATHS, img_height=128, img_width=128)
     model.build_graph()
     model.train(100)

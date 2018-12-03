@@ -57,8 +57,8 @@ class NnModel(object):
         with tf.variable_scope((stream_name+'_'+lyr_name), reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable(name="weight", dtype=tf.float32, initializer=w_init)
             b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init)
-          #  w = tf.get_variable("weight", dtype=tf.float32, shape=w_init.shape, initializer=tf.random_normal_initializer(stddev=0.5))
-           # b = tf.get_variable("bias", dtype=tf.float32, shape=b_init.shape,initializer=tf.random_normal_initializer(stddev=0.01))
+           #w = tf.get_variable("weight", dtype=tf.float32, shape=w_init.shape, initializer=tf.random_normal_initializer(stddev=0.5))
+           #b = tf.get_variable("bias", dtype=tf.float32, shape=b_init.shape,initializer=tf.random_normal_initializer(stddev=0.01))
             conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
             out = tf.nn.tanh((conv + b), name=scope.name)
         print(lyr_name)
@@ -69,12 +69,14 @@ class NnModel(object):
     def fully_connected_layer(self, pre_lyr, out_dims, lyr_name, last_lyr=False):
         _, height, width, depth = pre_lyr.shape.as_list()
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
-            w = tf.get_variable("weight", dtype=tf.float32, shape=[height, width, depth, out_dims], initializer=tf.random_normal_initializer(stddev=0.4))
-            b = tf.get_variable("bias", dtype=tf.float32, shape=[out_dims,], initializer=tf.constant_initializer(0.0))
+            w = tf.get_variable("weight", dtype=tf.float32, shape=[height, width, depth, out_dims], 
+                                initializer=tf.random_normal_initializer(stddev=0.4))
+            b = tf.get_variable("bias", dtype=tf.float32, shape=[out_dims, ], 
+                                initializer=tf.constant_initializer(0.0))
             z = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='VALID') + b
-            #out = tf.nn.relu(z, name=scope.name)
             if not last_lyr:
                 out = tf.nn.tanh(z, name=scope.name)
+               #out = tf.nn.relu(z, name=scope.name) 
             else:
                 out = z
         print(lyr_name)
@@ -115,7 +117,7 @@ class NnModel(object):
     def two_stream_vgg_load(self):
         print("begin to construct two stream vgg......")
 
-        self.conv2d_tanh(self.input_diff, 0,32, 'conv1_1')
+        self.conv2d_tanh(self.input_diff, 0, 32, 'conv1_1')
         self.conv2d_tanh(self.d_conv1_1, 2, 32, 'conv1_2')
         self.conv2d_tanh(self.input_img, 0, 32, 'conv1_1', stream_name='s')
         self.conv2d_tanh(self.s_conv1_1, 2, 32, 'conv1_2', stream_name='s')

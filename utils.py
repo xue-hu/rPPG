@@ -192,10 +192,10 @@ def get_meanstd(video_path, mode='video'):
     prob_id = t_id * 10 + u_id - 1
     cond = path[5].split('_')[0]
     #########local part##########################################
-    # cond = '101'
-    # prob_id = 0
+    #cond = '101'
+    #prob_id = 0
     #############################################################
-    print(cond + ' ' + str(prob_id) + ':')
+    #print(cond + ' ' + str(prob_id) + ':')
     mean, dev = mean_std[cond][prob_id]
     # print(mean)
     # print(dev)
@@ -232,6 +232,30 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
         pass
     binFile.close()
     return labels
+
+
+def rescale_label(label, mean, std, model='classification'):
+    label = label - mean
+    val = label / std
+    if model == 'classification':
+        if val > 0.2:
+            val = [0, 0, 0, 1]
+        elif val < -0.2:
+            val = [1, 0, 0, 0]
+        elif val > -0.2 and val < 0:
+            val = [0, 1, 0, 0]
+        else:
+            val = [0, 0, 1, 0]
+    else:
+        if val > 0.2:
+            val = 1
+        elif val < -0.2:
+            val = -1
+        elif -0.2 < val < 0:
+            val = -0.2
+        else:
+            val = 0.2
+    return val
 
 
 def butter_bandpass(lowcut, highcut, fs, order):

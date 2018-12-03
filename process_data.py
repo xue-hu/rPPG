@@ -16,6 +16,7 @@ from scipy.signal import butter, cheby2, lfilter
 #import matplotlib.pyplot as plt
 
 
+MODEL = 'classification'
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
 FRAME_RATE = 30.0
@@ -146,7 +147,7 @@ def crop_resize_face(video_path, width=112, height=112):
     capture.release()
     capture.open(video_path)
     if not capture.isOpened():
-        return -1
+        return
     else:
         print("video opened. start to read in.....")
     mean, dev = utils.get_meanstd(video_path)
@@ -159,7 +160,7 @@ def crop_resize_face(video_path, width=112, height=112):
         print("reading in frame " + str(idx))
         rd, frame = capture.read()
         if not rd:
-            return -1
+            return
         faces = utils.detect_face(frame)
         if len(faces) != 0:
             for (x, y, w, h) in faces:
@@ -190,7 +191,7 @@ def nor_diff_face(video_path, width=112, height=112):
     prob_id = path[4]
     cond = path[5].split('_')[0]
     ###########local###########################################
-   # prob_id = 'Proband02'
+    #prob_id = 'Proband02'
     #cond = '101'
     ###########################################################
     for clip in range(1, int(N_CLIPS+1)):
@@ -242,7 +243,7 @@ def nor_diff_clip(video_path, clip=1, width=112, height=112):
     prob_id = path[4]
     cond = path[5].split('_')[0]
     ###########local###########################################
-   # prob_id = 'Proband02'
+    #prob_id = 'Proband02'
     #cond = '101'
     ###########################################################
     scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
@@ -279,35 +280,21 @@ def nor_diff_clip(video_path, clip=1, width=112, height=112):
 ######################################################################
 
 
-def get_sample(video_path, label_path, clip=1, width=112, height=112, mode='train'):
+def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, mode='train'):
     if mode == 'train':
         diff_iterator = nor_diff_clip(video_path, clip=clip, width=width, height=height)
         skip_step = PLE_SAMPLE_RATE / FRAME_RATE
         labels = utils.cvt_sensorSgn(label_path, skip_step)
         mean, std = utils.get_meanstd(label_path, mode='label')
+        gt_skip_step = ECG_SAMPLE_RATE / FRAME_RATE
+        gts = utils.cvt_sensorSgn(gt_path, gt_skip_step)
         start_pos = (clip - 1) * CLIP_SIZE
         end_pos = clip * CLIP_SIZE - 1
         for idx in range(start_pos, end_pos):
             frame, diff = next(diff_iterator)
-            label = float(labels[idx+1] - labels[idx]) - mean
-            val = label / std
-            ###########regression########################################################
-            # if label > 0.2:
-            #     label = 1
-            # elif label < -0.2:
-            #     label = -1
-            # else:
-            #     label = 0
-            #########classification######################################
-            if val > 0.2:
-                val = [0, 0, 0, 1]
-            elif val < -0.2:
-                val = [1, 0, 0, 0]
-            elif val > -0.2 and val < 0:
-                val = [0, 1, 0, 0]
-            else:
-                val = [0, 0, 1, 0]
-            ############################################################
+            gt = float(gts[idx])
+            label = float(labels[idx+1] - labels[idx])
+            val = utils.rescale_label(label, mean, std, MODEL)
             #if idx%100 == 0:
                 #print('input frame:')
                 #print(frame[60:63,60:63,:])
@@ -315,57 +302,67 @@ def get_sample(video_path, label_path, clip=1, width=112, height=112, mode='trai
                 #print(diff[60:63,60:63,:])
                 #print('label:')
                 #print(label)
-            yield (frame, diff, val)
+            yield (frame, diff, val, gt)
     else:
         diff_iterator = nor_diff_face(video_path, width=width, height=height)
-        skip_step = ECG_SAMPLE_RATE / FRAME_RATE
-        gts = utils.cvt_sensorSgn(label_path, skip_step)
+        skip_step = PLE_SAMPLE_RATE / FRAME_RATE
+        labels = utils.cvt_sensorSgn(label_path, skip_step)
+        mean, std = utils.get_meanstd(label_path, mode='label')
+        gt_skip_step = ECG_SAMPLE_RATE / FRAME_RATE
+        gts = utils.cvt_sensorSgn(gt_path, gt_skip_step)
         for idx in range(N_FRAME - 1):
             frame, diff = next(diff_iterator)
             gt = float(gts[idx])
-            yield (frame, diff, gt)
+            label = float(labels[idx + 1] - labels[idx])
+            val = utils.rescale_label(label, mean, std, MODEL)
+            yield (frame, diff, val, gt)
 
 
-def get_batch(video_paths, label_paths, clips, batch_size, width=112, height=112, mode='train'):
+def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, height=112, mode='train'):
     frame_batch = []
     diff_batch = []
     label_batch = []
+    gt_batch = []
     random.shuffle(clips)
-    paths = list(zip(video_paths, label_paths))
+    paths = list(zip(video_paths, label_paths, gt_paths))
     if mode == 'train':
         for clip in clips:
             random.shuffle(paths)
-            for (video_path, label_path) in paths:
-                iterator = get_sample(video_path, label_path, clip=clip, width=width, height=height, mode=mode)
+            for (video_path, label_path, gt_path) in paths:
+                iterator = get_sample(video_path, label_path, gt_path, clip=clip, width=width, height=height, mode=mode)
                 try:
                     while True:
                         while len(frame_batch) < batch_size:
-                            frame, diff, label = next(iterator)
+                            frame, diff, label, gt = next(iterator)
                             frame_batch.append(frame)
                             diff_batch.append(diff)
                             label_batch.append(label)
-                        yield frame_batch, diff_batch, label_batch
+                            gt_batch.append(gt)
+                        yield frame_batch, diff_batch, label_batch, gt_batch
                         # print('done one batch.')
                         frame_batch = []
                         diff_batch = []
                         label_batch = []
+                        gt_batch = []
                 except StopIteration:
                     continue
     else:
-        for (video_path, label_path) in zip(video_paths, label_paths):
-            iterator = get_sample(video_path, label_path, width=width, height=height, mode=mode)
+        for (video_path, label_path, gt_path) in zip(video_paths, label_paths, gt_paths):
+            iterator = get_sample(video_path, label_path, gt_path, width=width, height=height, mode=mode)
             try:
                 while True:
                     while len(frame_batch) < batch_size:
-                        frame, diff, gt = next(iterator)
+                        frame, diff, label, gt = next(iterator)
                         frame_batch.append(frame)
                         diff_batch.append(diff)
-                        label_batch.append(gt)
-                    yield frame_batch, diff_batch, label_batch
+                        label_batch.append(label)
+                        gt_batch.append(gt)
+                    yield frame_batch, diff_batch, label_batch, gt_batch
                     # print('done one batch.')
                     frame_batch = []
                     diff_batch = []
                     label_batch = []
+                    gt_batch = []
             except StopIteration:
                 continue
 
@@ -430,7 +427,7 @@ def cvt_class(m):
     # plt.ylabel('occurance')
     # plt.show()
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
     ##########batched labeled-samples######################
     # train_v_paths, train_l_paths = utils.create_file_paths([2,3])
     # train_gen = get_batch(train_v_paths, train_l_paths, [1, 2], 500)
@@ -438,23 +435,22 @@ if __name__ == '__main__':
     # test_gen = get_batch(test_v_paths, test_l_paths, [1,2], 500, mode='test')
 
     #######################################################
-    # train_gen = get_batch(VIDEO_PATHS, LABEL_PATHS, [1, 2], 500)
-    # test_gen = get_batch(VIDEO_PATHS, GT_PATHS, [1, 2], 500, mode='test')
+    #train_gen = get_batch(VIDEO_PATHS, LABEL_PATHS, GT_PATHS, [1, 2], 20)
+    #test_gen = get_batch(VIDEO_PATHS, GT_PATHS, [1, 2], 500, mode='test')
     # idx = 0
     # print('<<<<<<<<<train gen>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     # try:
     #     while True:
-    #         frames, diffs, labels = next(train_gen)
+    #         frames, diffs, labels, gts = next(train_gen)
     #         print('batch-'+str(idx))
     #         idx += 1
-    #         for (frame, diff, label) in zip(frames, diffs, labels):
-            #     # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
-            #     # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
-            #     cv2.imshow('face', frame.astype(np.uint8))
-            #     # cv2.imshow('diff', diff)
-            #     print(label)
-            #     cv2.waitKey(0)
-    #             break
+    #         for (frame, diff, label, gt) in zip(frames, diffs, labels, gts):
+    #             # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
+    #             # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
+    #             cv2.imshow('face', frame)
+    #             cv2.imshow('diff', diff)
+    #             print(str(label)+' - '+str(gt))
+    #             cv2.waitKey(0)
     # except StopIteration:
     #     pass
     # print('<<<<<<<<<test gen>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -480,10 +476,10 @@ if __name__ == '__main__':
     #labels_paths = utils.create_file_paths([2], sensor_sgn=1)
     ############local:read in ground truth##########################################
     ############local:read in ppg##########################################
-    with open('Pleth.pickle', 'rb') as f:
-        m = pickle.load(f)
-    f.close()
-    cvt_class(m)
+    # with open('Pleth.pickle', 'rb') as f:
+    #     m = pickle.load(f)
+    # f.close()
+    # cvt_class(m)
 
 
 
