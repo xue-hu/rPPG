@@ -37,9 +37,9 @@ class VideoAnalysis(object):
         self.height = img_height
         self.duration = 30
         self.lr = 0.01
-        self.batch_size = 32
+        self.batch_size = 64
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
-        self.skip_step = 300
+        self.skip_step = 700
 
     def get_data(self, video_paths, label_paths, clips, mode='train'):
         print("create generator....")
@@ -159,8 +159,8 @@ class VideoAnalysis(object):
                 writer.add_summary(summary, global_step=step)
                 step += 1
                 print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
-                #if step % self.skip_step == 0:
-                 #   saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
+                if step % self.skip_step == 0:
+                    saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
         except StopIteration:
             pass
         print('Average loss at epoch {0}: {1}'.format(epoch, total_loss / n_batch))
@@ -256,7 +256,7 @@ if __name__ == '__main__':
     s_p = [2, 3, 4, 6, 7, 9, 10]
     p = range(12, 15)
     s_p += p
-    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 4, 5, 6])#, 10, 12, 13, 15, 16, 17])
+    tr_vd_paths, tr_lb_paths = utils.create_file_paths([2, 4, 5, 6, 10, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 26])
     te_vd_paths, te_lb_paths = utils.create_file_paths([14], sensor_sgn=0)
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, te_vd_paths, te_lb_paths, img_width=128, img_height=128)
     ######################################################################################

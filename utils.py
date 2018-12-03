@@ -189,13 +189,13 @@ def get_meanstd(video_path, mode='video'):
     path = video_path.split('/')
     u_id = int(path[4][-1])
     t_id = int(path[4][-2])
-    prob_id = t_id * 10 + u_id
+    prob_id = t_id * 10 + u_id - 1
     cond = path[5].split('_')[0]
     #########local part##########################################
     # cond = '101'
     # prob_id = 0
     #############################################################
-    # print(cond + ' ' + str(prob_id) + ':')
+    print(cond + ' ' + str(prob_id) + ':')
     mean, dev = mean_std[cond][prob_id]
     # print(mean)
     # print(dev)
@@ -259,21 +259,21 @@ def cheby2_bandpass_filter(data, rs, lowcut, highcut, fs, order):
 
 if __name__ == '__main__':
     #######remote&whole#######mean&std file####################################################
-    dict = {}
-    con = ''
-    col = []
-    for cond in ['lighting','movement']:
-        if cond == 'lighting':
-            n = 6
-        else:
-            n = 4
-        for i in range(n):
-            vd, _ = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-            con, col = cal_meanStd_video(vd)
-            dict[con] = col
-    with open('MeanStddev.pickle', 'wb') as f:
-        pickle.dump(dict, f)
-    f.close()
+    #dict = {}
+    #con = ''
+    #col = []
+    #for cond in ['lighting','movement']:
+    #    if cond == 'lighting':
+    #        n = 6
+    #    else:
+    #        n = 4
+    #    for i in range(n):
+    #        vd, _ = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+    #        con, col = cal_meanStd_video(vd)
+    #        dict[con] = col
+    #with open('MeanStddev.pickle', 'wb') as f:
+    #    pickle.dump(dict, f)
+    #f.close()
     ##########remote&part#####mean&std file###############################################################
     # dict = {}
     # con = ''
@@ -296,21 +296,21 @@ if __name__ == '__main__':
     #         for v in vd:
     #             get_meanstd(v)
     #########remote mean&std labels#####################################################################
-    # dict = {}
-    # con = ''
-    # col = []
-    # for cond in ['lighting', 'movement']:
-    #     if cond == 'lighting':
-    #         n = 6
-    #     else:
-    #         n = 4
-    #     for i in range(n):
-    #         _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-    #         con, col = cal_meanStd_label(lb)
-    #         dict[con] = col
-    # with open('LabelMeanStddev.pickle', 'wb') as f:
-    #     pickle.dump(dict, f)
-    # f.close()
+    dict = {}
+    con = ''
+    col = []
+    for cond in ['lighting', 'movement']:
+        if cond == 'lighting':
+            n = 6
+        else:
+            n = 4
+        for i in range(n):
+            _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+            con, col = cal_meanStd_label(lb)
+            dict[con] = col
+    with open('LabelMeanStddev.pickle', 'wb') as f:
+        pickle.dump(dict, f)
+    f.close()
     #########local mean&std labels#####################################################################
     # dict = {}
     # con = ''
