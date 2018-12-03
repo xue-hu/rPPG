@@ -271,7 +271,7 @@ if __name__ == '__main__':
     temp = [2, 4, 5, 6, 10, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 26]
     test = [14]
     tr_vd_paths, tr_lb_paths = utils.create_file_paths(temp)
-    _, tr_gt_paths = utils.create_file_paths(temp, sensor_sng=0)
+    _, tr_gt_paths = utils.create_file_paths(temp, sensor_sgn=0)
     te_vd_paths, te_lb_paths = utils.create_file_paths(test)
     _, te_gt_paths = utils.create_file_paths(test, sensor_sgn=0)
     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, tr_gt_paths, te_vd_paths, te_lb_paths, te_gt_paths, img_width=128, img_height=128)

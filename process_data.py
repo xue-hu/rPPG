@@ -303,6 +303,8 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
                 #print('label:')
                 #print(label)
             yield (frame, diff, val, gt)
+            if val[-1] or val[-2]:
+                yield (frame, diff, val, gt)
     else:
         diff_iterator = nor_diff_face(video_path, width=width, height=height)
         skip_step = PLE_SAMPLE_RATE / FRAME_RATE

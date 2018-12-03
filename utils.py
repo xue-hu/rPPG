@@ -206,8 +206,8 @@ def get_meanstd(video_path, mode='video'):
 def rescale_frame(img, mean=0, dev=1.0):
     mean = mean.reshape((1, 1, 3))
     dev = dev.reshape((1, 1, 3))
-    img = img - mean  # - np.array([123.68, 116.779, 103.939]).reshape((1, 1, 3))
-    img = np.true_divide(img, dev)
+    #img = img - mean  # - np.array([123.68, 116.779, 103.939]).reshape((1, 1, 3))
+    #img = np.true_divide(img, dev)
     return img
 
 
@@ -234,9 +234,9 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
     return labels
 
 
-def rescale_label(label, mean, std, model='classification'):
-    label = label - mean
-    val = label / std
+def rescale_label(val, mean, std, model='classification'):
+    #val = val - mean
+    #val = val / std
     if model == 'classification':
         if val > 0.2:
             val = [0, 0, 0, 1]
