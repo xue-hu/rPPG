@@ -76,18 +76,21 @@ def create_video_clip(video_paths, width=128, height=128):
         capture.release()
 
 
-def get_remote_label(label_paths):
+def get_remote_label(label_paths, gt_paths):
     s_dict = {}
     skip_step = 256.0 / 30.0
-    idx = 0
-    for label_path in label_paths:
+    gt_skip_step = 16.0 / 30.0
+    i = 0
+    for label_path, gt_path in zip(label_paths, gt_paths):
+        print(i)
         sgns = []
         labels = utils.cvt_sensorSgn(label_path, skip_step)
+        gts = utils.cvt_sensorSgn(gt_path, gt_skip_step)
         for idx in range(len(labels) - 1):
             val = float(labels[idx + 1] - labels[idx])
-            sgns.append(val)
-        s_dict[idx] = sgns
-        idx += 1
+            sgns.append((val,gts[idx]))
+        s_dict[str(i)] = sgns
+        i += 1
     return s_dict
 
 
@@ -118,7 +121,8 @@ if __name__ == '__main__':
     #         n = 4
     #     for i in range(n):
     _, lb = utils.create_file_paths(range(1, 27))
-    s_dict = get_remote_label(lb)
+    _, p = utils.create_file_paths(range(1, 27), sensor_sgn=0)
+    s_dict = get_remote_label(lb, p)
     with open('Pleth.pickle', 'wb') as f:
         pickle.dump(s_dict, f)
     f.close()

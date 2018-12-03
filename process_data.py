@@ -13,7 +13,7 @@ import scipy
 from scipy import fftpack
 import pickle
 from scipy.signal import butter, cheby2, lfilter
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 
 MODEL = 'classification'

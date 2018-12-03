@@ -114,7 +114,7 @@ def cal_meanStd_label(label_paths, data_len=8):
         ######local##############################
         #cond = '101'
         #########################################
-        labels = utils.cvt_sensorSgn(label_path, skip_step)
+        labels = cvt_sensorSgn(label_path, skip_step)
         for idx in range(len(labels) - 1):
             val = float(labels[idx + 1] - labels[idx])
             file_label.append(val)

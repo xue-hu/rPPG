@@ -11,11 +11,11 @@ import struct
 LABEL_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin'
 GT_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/6_Pulse.bin'
 ############check calculated mean&std##########################################
+#with open('LabelMeanStddev.pickle', 'rb') as f:
 with open('LabelMeanStddev.pickle', 'rb') as f:
     m = pickle.load(f)
-for i in m['101']:
-    print(i)
-print(len(m['203']))
+for i in range(26):
+    print(m['101'][i])
 
 # video_paths=['a','b','c','d']
 # label_paths=['A','B','C','D']
