@@ -167,7 +167,7 @@ def get_meanstd(video_path, mode='video'):
     #cond = '101'
     #prob_id = 0
     #############################################################
-    #print(cond + ' ' + str(prob_id) + ':')
+    print('mean&std of '+mode+': '+cond + ' ' + str(prob_id))
     mean, dev = mean_std[cond][prob_id]
     # print(mean)
     # print(dev)
@@ -207,8 +207,8 @@ def cvt_sensorSgn(label_path, skip_step, data_len=8):
 
 
 def rescale_label(val, mean, std, model='classification'):
-    #val = val - mean
-    #val = val / std
+    val = val - mean
+    val = val / std
     if model == 'classification':
         if val > 0.2:
             val = [0, 0, 0, 1]

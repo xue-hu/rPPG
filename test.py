@@ -14,8 +14,8 @@ GT_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/
 #with open('LabelMeanStddev.pickle', 'rb') as f:
 with open('LabelMeanStddev.pickle', 'rb') as f:
     m = pickle.load(f)
-for i in range(26):
-    print(m['101'][i])
+for key,li in m.items():
+    print(key+' - '+str(len(li)))
 
 # video_paths=['a','b','c','d']
 # label_paths=['A','B','C','D']
