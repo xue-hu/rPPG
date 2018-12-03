@@ -116,36 +116,11 @@ def cal_meanStd_label(label_paths, data_len=8):
         ######local##############################
         #cond = '101'
         #########################################
-        binFile = open(label_path, 'rb')
-        flag = True
-        idx = 0
-        try:
-            while True:
-                pos = math.floor(idx * skip_step)
-                if flag:
-                    binFile.seek(pos * data_len)
-                    sgn = binFile.read(data_len)
-                    d_sgn = struct.unpack("d", sgn)[0]
-                    idx += 1
-                    pos = math.floor(idx * skip_step)
-                    binFile.seek(pos * data_len)
-                    sgn2 = binFile.read(data_len)
-                    d_sgn2 = struct.unpack("d", sgn2)[0]
-                    idx += 1
-                    flag = False
-                else:
-                    d_sgn = d_sgn2
-                    binFile.seek(pos * data_len)
-                    sgn2 = binFile.read(data_len)
-                    d_sgn2 = struct.unpack("d", sgn2)[0]
-                    idx += 1
-                re = (d_sgn2 - d_sgn)
-                file_label.append(re)
-        except Exception:
-            binFile.close()
-            # continue
+        labels = utils.cvt_sensorSgn(label_path, skip_step)
+        for idx in range(len(labels) - 1):
+            val = float(labels[idx + 1] - labels[idx])
+            file_label.append(val)
         print('file label len:')
-        print(len(file_label))
         mean = np.mean(file_label)
         std = np.std(file_label)
         sgn_li.append((mean, std))

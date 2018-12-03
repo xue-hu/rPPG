@@ -13,7 +13,7 @@ import scipy
 from scipy import fftpack
 import pickle
 from scipy.signal import butter, cheby2, lfilter
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 
 MODEL = 'classification'
@@ -375,28 +375,29 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
 
 def cvt_class(m):
     duration = 30
+    all = []
+    idx = 0
     for _, li in m.items():
         sgns = []
         rand = []
         hr_label = []
-        pos = []
-        neg = []
         for val, hr in li:
             hr_label.append(hr)
-            if val > 0.2:
-                val = 1
-            elif val < -0.2:
-                val = -1
-            elif val > -0.2 and val < 0:
-               val = -0.5
-            else:
-                val = 0.5
-            if val > 0:
-                pos.append(val)
-            elif val < 0:
-                neg.append(val)
-            else:
-                pass
+            # if val > 1:
+            #     val = 1
+            # if val < -1:
+            #     val = -1
+            # if val ==0:
+            #     continue
+            all.append(val)
+            # if val > 0.2:
+            #     val = 1
+            # if val < -0.2:
+            #     val = -1
+            # if -0.2 < val < 0:
+            #     val = -0.5
+            # if 0 < val < 0.2:
+            #     val = 0.5
             sgns.append(val)
             seed = random.random()
             if seed > 0.85:
@@ -405,6 +406,17 @@ def cvt_class(m):
                 else:
                     val = seed
             rand.append(val)
+        #print(idx)
+        # mean = np.mean(sgns)
+        # std = np.std(sgns)
+        # print(mean)
+        # print(std)
+        idx += 1
+        # plt.hist(sgns, bins=20)
+        # plt.title("all label difference distribution")
+        # plt.xlabel('value')
+        # plt.ylabel('occurance')
+        # plt.show()
         pred = []
         label = []
         gt = []
@@ -422,18 +434,19 @@ def cvt_class(m):
             if abs(rate - ac) < 5:
                 accur += 1
         print(str(note / len(pred)) + ' - ' + str(accur / len(pred)))
-
+    mean = np.mean(all)
+    std = np.std(all)
+    print(mean)
+    print(std)
     ############local: check cvt hr & gts##########################################
-    # fig, axs = plt.subplots(1, 3, tight_layout=True)
-    # axs[0].hist(pos, bins=10)
-    # axs[1].hist(neg, bins=10)
-    # axs[2].hist(sgns, bins=10)
-    # plt.title("label difference distribution")
+    # plt.hist(all, bins=20)
+    # plt.title("all label difference distribution")
     # plt.xlabel('value')
     # plt.ylabel('occurance')
     # plt.show()
+    # print(idx)
 
-#if __name__ == '__main__':
+if __name__ == '__main__':
     ##########batched labeled-samples######################
     # train_v_paths, train_l_paths = utils.create_file_paths([2,3])
     # train_gen = get_batch(train_v_paths, train_l_paths, [1, 2], 500)
@@ -482,10 +495,10 @@ def cvt_class(m):
     #labels_paths = utils.create_file_paths([2], sensor_sgn=1)
     ############local:read in ground truth##########################################
     ############local:read in ppg##########################################
-    # with open('Pleth.pickle', 'rb') as f:
-    #     m = pickle.load(f)
-    # f.close()
-    # cvt_class(m)
+    with open('Pleth.pickle', 'rb') as f:
+        m = pickle.load(f)
+    f.close()
+    cvt_class(m)
 
 
 
