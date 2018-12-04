@@ -105,13 +105,12 @@ def cal_meanStd_video(video_paths, width=256, height=256):
 def cal_meanStd_vdiff(video_paths, width=256, height=256):
     col = []
     for video_path in video_paths:
+        li = []
         print(video_path)
         print(os.path.exists(video_path))
         path = video_path.split('/')
         prob_id = path[4]
         cond = path[5].split('_')[0]
-        mean = 0.0
-        dev = 0.0
         ###########local###########################################
         # prob_id = 'Proband02'
         # cond = '101'
@@ -144,12 +143,11 @@ def cal_meanStd_vdiff(video_paths, width=256, height=256):
                 re = np.true_divide(diff, mean_fr, dtype=np.float32)
                 re[re == np.inf] = 0
                 re = np.nan_to_num(re)
-                f_mean = np.mean(re, axis=(0, 1))
-                mean += np.true_divide(f_mean, N_FRAME)
-                f_dev = np.std(re, axis=(0, 1)) ** 2
-                dev += np.true_divide(f_dev, N_FRAME)
-        stddev = np.sqrt(dev)
-        col.append((mean, stddev))
+                li.append(re)
+        mean = np.mean(li, axis=(0,1,2))
+        std = np.std(li, axis=(0,1,2))
+        print(mean.shape)
+        col.append((mean, std))
     return cond, col
 
 def cal_meanStd_label(label_paths, data_len=8):
@@ -242,9 +240,10 @@ def rescale_frame(img, mean=0, dev=1.0):
 def clip_dframe(re, mean=0, dev=1.0):
     mean = mean.reshape((1, 1, 3))
     dev = dev.reshape((1, 1, 3))
-    re = re - mean
-    re = re / dev
-    re[np.where(np.abs(re)>3)] = 3
+    #re = re - mean
+    #re = np.true_divide(re, dev)
+    #re[np.where(re>3)] = 3
+    #re[np.where(re<-3)] = -3
     return re
 
 

@@ -249,7 +249,7 @@ def nor_diff_clip(video_path, clip=1, width=112, height=112):
     scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
     start_pos = (clip - 1) * CLIP_SIZE
     end_pos = clip * CLIP_SIZE - 1
-    mean, dev = utils.get_meanstd(video_path)
+    mean, dev = utils.get_meanstd(video_path, mode='video')
     re_mean, re_dev = utils.get_meanstd(video_path, mode='diff')
     print(cond + '-' + prob_id + '-clip' + str(clip))
     for idx in range(start_pos, end_pos):
@@ -299,7 +299,6 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
             if val[-1]:
                 yield (frame, diff, val, gt)
             if val[-2]:
-                yield (frame, diff, val, gt)
                 yield (frame, diff, val, gt)
     else:
         diff_iterator = nor_diff_face(video_path, width=width, height=height)

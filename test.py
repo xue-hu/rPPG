@@ -17,7 +17,9 @@ with open('DiffFrameMeanStddev.pickle', 'rb') as f:
     m = pickle.load(f)
 #for li in m['101']:
 #    print(li)
-print(len(m['101']))
+print(m['101'][1])
+print(m['101'][12])
+print(m['101'][21])
 
 # video_paths=['a','b','c','d']
 # label_paths=['A','B','C','D']

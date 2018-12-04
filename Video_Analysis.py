@@ -198,9 +198,9 @@ class VideoAnalysis(object):
                         pred = np.argmax(pred, axis=1)
                         print(pred[:3])
                         pred[pred == 0] = -1
-                        pred[pred == 1] = -0.5
-                        pred[pred == 2] = 0.5
-                        pred[pred == 3] = 1
+                        pred[pred == 1] = 0
+                        pred[pred == 2] = 1
+                       # pred[pred == 3] = 1
                         pred = pred.tolist()
                         print(pred[:3])
                     ppgs += pred
