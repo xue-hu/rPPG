@@ -13,14 +13,11 @@ GT_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/
 ############check calculated mean&std##########################################
 #with open('LabelMeanStddev.pickle', 'rb') as f:
 # with open('LabelMeanStddev.pickle', 'rb') as f:
-#     m = pickle.load(f)
-# for key,li in m.items():
-#     print(key+' - '+str(len(li)))
-
-a = np.array([1,2,3])
-n = (-3<a and a<3).sum()
-print(n)
-print(a)
+with open('DiffFrameMeanStddev.pickle', 'rb') as f:
+    m = pickle.load(f)
+#for li in m['101']:
+#    print(li)
+print(len(m['101']))
 
 # video_paths=['a','b','c','d']
 # label_paths=['A','B','C','D']

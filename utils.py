@@ -16,6 +16,7 @@ from scipy.signal import butter, cheby2, lfilter
 
 N_FRAME = 3600
 N_CLIPS = 120
+CLIP_SIZE = int(N_FRAME / N_CLIPS)
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 
@@ -109,6 +110,8 @@ def cal_meanStd_vdiff(video_paths, width=256, height=256):
         path = video_path.split('/')
         prob_id = path[4]
         cond = path[5].split('_')[0]
+        mean = 0.0
+        dev = 0.0
         ###########local###########################################
         # prob_id = 'Proband02'
         # cond = '101'
@@ -117,7 +120,6 @@ def cal_meanStd_vdiff(video_paths, width=256, height=256):
             scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
             start_pos = (clip - 1) * CLIP_SIZE
             end_pos = clip * CLIP_SIZE
-            mean, dev = utils.get_meanstd(video_path)
             print(cond + '-' + prob_id + '-clip' + str(clip))
             for idx in range(start_pos, end_pos):
                 if idx % 100 == 0:
@@ -130,9 +132,11 @@ def cal_meanStd_vdiff(video_paths, width=256, height=256):
                     next_path = scr_path + str(clip * CLIP_SIZE) + '.jpg'
                 elif idx == end_pos - 1 and clip == N_CLIPS:
                     print('done ' + cond + '-' + prob_id)
-                    raise StopIteration
+                    continue
                 else:
                     next_path = scr_path + str(idx + 1) + '.jpg'
+            #    print(os.path.exists(pre_path))
+             #   print(os.path.exists(next_path))
                 pre_frame = cv2.imread(pre_path).astype(np.float32)
                 next_frame = cv2.imread(next_path).astype(np.float32)
                 diff = np.subtract(next_frame, pre_frame)
@@ -142,7 +146,7 @@ def cal_meanStd_vdiff(video_paths, width=256, height=256):
                 re = np.nan_to_num(re)
                 f_mean = np.mean(re, axis=(0, 1))
                 mean += np.true_divide(f_mean, N_FRAME)
-                f_dev = np.std(RE, axis=(0, 1)) ** 2
+                f_dev = np.std(re, axis=(0, 1)) ** 2
                 dev += np.true_divide(f_dev, N_FRAME)
         stddev = np.sqrt(dev)
         col.append((mean, stddev))
@@ -219,7 +223,7 @@ def get_meanstd(video_path, mode='video'):
     #cond = '101'
     #prob_id = 0
     #############################################################
-    print('mean&std of '+mode+': '+cond + ' ' + str(prob_id))
+    #print('mean&std of '+mode+': '+cond + ' ' + str(prob_id))
     mean, dev = mean_std[cond][prob_id]
     # print(mean)
     # print(dev)
@@ -235,19 +239,13 @@ def rescale_frame(img, mean=0, dev=1.0):
     return img
 
 
-def clip_dframe(re, mean=0, dev=1.0, mode='train'):
+def clip_dframe(re, mean=0, dev=1.0):
     mean = mean.reshape((1, 1, 3))
     dev = dev.reshape((1, 1, 3))
     re = re - mean
     re = re / dev
-    if mode != 'train':
-        return re
-    else:
-        outlier = (re >= 3).sum()
-        if not outlier:
-            return re
-        else:
-            return -1
+    re[np.where(np.abs(re)>3)] = 3
+    return re
 
 
 def cvt_sensorSgn(label_path, skip_step, data_len=8):
@@ -357,15 +355,15 @@ if __name__ == '__main__':
     dict = {}
     con = ''
     col = []
-    for cond in ['lighting', 'movement']:
-       if cond == 'lighting':
-           n = 6
-       else:
-           n = 4
-       for i in range(n):
-           vd, _ = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-           con, col = cal_meanStd_video(vd)
-           dict[con] = col
+    #for cond in ['lighting', 'movement']:
+    #   if cond == 'lighting':
+    #       n = 6
+    #   else:
+    #       n = 4
+    #   for i in range(n):
+    vd, _ = create_file_paths(range(1, 27))
+    con, col = cal_meanStd_vdiff(vd)
+    dict[con] = col
     with open('DiffFrameMeanStddev.pickle', 'wb') as f:
        pickle.dump(dict, f)
     f.close()

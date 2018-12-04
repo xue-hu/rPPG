@@ -13,7 +13,7 @@ import scipy
 from scipy import fftpack
 import pickle
 from scipy.signal import butter, cheby2, lfilter
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 
 MODEL = 'classification'
@@ -225,7 +225,7 @@ def nor_diff_face(video_path, width=112, height=112):
             re[re == np.inf] = 0
             re = np.nan_to_num(re)
             ########### wait to implement ########################################################
-            re = utils.clip_dframe(re, re_mean, re_dev, mode='test')
+            re = utils.clip_dframe(re, re_mean, re_dev)
             pre_frame = utils.rescale_frame(pre_frame, mean, dev)
             ########################################################################################
             # cv2.imshow("diff", diff)
@@ -267,9 +267,7 @@ def nor_diff_clip(video_path, clip=1, width=112, height=112):
         re[re == np.inf] = 0
         re = np.nan_to_num(re)
         ########### wait to implement ########################################################
-        re = utils.clip_dframe(re, re_mean, re_dev, mode='train')
-        if re == -1:
-            continue
+        re = utils.clip_dframe(re, re_mean, re_dev)
         pre_frame = utils.rescale_frame(pre_frame, mean, dev)
         ########################################################################################
         # cv2.imshow("diff", diff)
