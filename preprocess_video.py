@@ -94,7 +94,7 @@ def get_remote_label(label_paths, gt_paths):
     return s_dict
 
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
     #########1.remote-prepro all videos######################
     # for cond in ['lighting', 'movement']:
     #     if cond == 'lighting':
@@ -120,9 +120,9 @@ if __name__ == '__main__':
     #     else:
     #         n = 4
     #     for i in range(n):
-    _, lb = utils.create_file_paths(range(1, 27))
-    _, p = utils.create_file_paths(range(1, 27), sensor_sgn=0)
-    s_dict = get_remote_label(lb, p)
-    with open('Pleth.pickle', 'wb') as f:
-        pickle.dump(s_dict, f)
-    f.close()
+    # _, lb = utils.create_file_paths(range(1, 27))
+    # _, p = utils.create_file_paths(range(1, 27), sensor_sgn=0)
+    # s_dict = get_remote_label(lb, p)
+    # with open('Pleth.pickle', 'wb') as f:
+    #     pickle.dump(s_dict, f)
+    # f.close()

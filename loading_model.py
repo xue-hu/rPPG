@@ -10,7 +10,7 @@ import cv2
 
 # VGG-19 parameters file
 MODEL = 'classification'
-N_CLASSES = 4
+N_CLASSES = 3
 VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat'
 VGG_FILENAME = 'imagenet-vgg-verydeep-19.mat'
 EXPECTED_BYTES = 534904783
@@ -69,14 +69,14 @@ class NnModel(object):
     def fully_connected_layer(self, pre_lyr, out_dims, lyr_name, last_lyr=False):
         _, height, width, depth = pre_lyr.shape.as_list()
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
-            w = tf.get_variable("weight", dtype=tf.float32, shape=[height, width, depth, out_dims], 
+            w = tf.get_variable("weight", dtype=tf.float32, shape=[height, width, depth, out_dims],
                                 initializer=tf.random_normal_initializer(stddev=0.4))
-            b = tf.get_variable("bias", dtype=tf.float32, shape=[out_dims, ], 
+            b = tf.get_variable("bias", dtype=tf.float32, shape=[out_dims, ],
                                 initializer=tf.constant_initializer(0.0))
             z = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='VALID') + b
             if not last_lyr:
                 out = tf.nn.tanh(z, name=scope.name)
-               #out = tf.nn.relu(z, name=scope.name) 
+               #out = tf.nn.relu(z, name=scope.name)
             else:
                 out = z
         print(lyr_name)

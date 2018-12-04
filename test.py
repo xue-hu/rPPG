@@ -12,10 +12,15 @@ LABEL_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C9
 GT_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/6_Pulse.bin'
 ############check calculated mean&std##########################################
 #with open('LabelMeanStddev.pickle', 'rb') as f:
-with open('LabelMeanStddev.pickle', 'rb') as f:
-    m = pickle.load(f)
-for key,li in m.items():
-    print(key+' - '+str(len(li)))
+# with open('LabelMeanStddev.pickle', 'rb') as f:
+#     m = pickle.load(f)
+# for key,li in m.items():
+#     print(key+' - '+str(len(li)))
+
+a = np.array([1,2,3])
+n = (-3<a and a<3).sum()
+print(n)
+print(a)
 
 # video_paths=['a','b','c','d']
 # label_paths=['A','B','C','D']

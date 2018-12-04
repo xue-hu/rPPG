@@ -14,6 +14,8 @@ import scipy
 from scipy import fftpack
 from scipy.signal import butter, cheby2, lfilter
 
+N_FRAME = 3600
+N_CLIPS = 120
 VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 
@@ -99,6 +101,53 @@ def cal_meanStd_video(video_paths, width=256, height=256):
     return cond, col
 
 
+def cal_meanStd_vdiff(video_paths, width=256, height=256):
+    col = []
+    for video_path in video_paths:
+        print(video_path)
+        print(os.path.exists(video_path))
+        path = video_path.split('/')
+        prob_id = path[4]
+        cond = path[5].split('_')[0]
+        ###########local###########################################
+        # prob_id = 'Proband02'
+        # cond = '101'
+        ###########################################################
+        for clip in range(1, int(N_CLIPS + 1)):
+            scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
+            start_pos = (clip - 1) * CLIP_SIZE
+            end_pos = clip * CLIP_SIZE
+            mean, dev = utils.get_meanstd(video_path)
+            print(cond + '-' + prob_id + '-clip' + str(clip))
+            for idx in range(start_pos, end_pos):
+                if idx % 100 == 0:
+                    print("reading in frame " + str(idx) + "," + str(idx + 1))
+                pre_path = scr_path + str(idx) + '.jpg'
+                if idx == end_pos - 1 and clip != N_CLIPS:
+                    print('end of clip-' + str(clip))
+                    print('reading in ' + str((clip) * CLIP_SIZE) + '.jpg')
+                    scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip + 1) + '/'
+                    next_path = scr_path + str(clip * CLIP_SIZE) + '.jpg'
+                elif idx == end_pos - 1 and clip == N_CLIPS:
+                    print('done ' + cond + '-' + prob_id)
+                    raise StopIteration
+                else:
+                    next_path = scr_path + str(idx + 1) + '.jpg'
+                pre_frame = cv2.imread(pre_path).astype(np.float32)
+                next_frame = cv2.imread(next_path).astype(np.float32)
+                diff = np.subtract(next_frame, pre_frame)
+                mean_fr = np.add(next_frame / 2.0, pre_frame / 2.0)
+                re = np.true_divide(diff, mean_fr, dtype=np.float32)
+                re[re == np.inf] = 0
+                re = np.nan_to_num(re)
+                f_mean = np.mean(re, axis=(0, 1))
+                mean += np.true_divide(f_mean, N_FRAME)
+                f_dev = np.std(RE, axis=(0, 1)) ** 2
+                dev += np.true_divide(f_dev, N_FRAME)
+        stddev = np.sqrt(dev)
+        col.append((mean, stddev))
+    return cond, col
+
 def cal_meanStd_label(label_paths, data_len=8):
     sgn_li = []
     skip_step = 256.0 / 30.0
@@ -154,6 +203,9 @@ def get_meanstd(video_path, mode='video'):
     if mode == 'video':
         with open('MeanStddev.pickle', 'rb') as file:
             mean_std = pickle.load(file)
+    elif mode == 'diff':
+        with open('DiffFrameMeanStddev.pickle', 'rb') as file:
+            mean_std = pickle.load(file)
     else:
         with open('LabelMeanStddev.pickle', 'rb') as file:
             mean_std = pickle.load(file)
@@ -178,14 +230,24 @@ def get_meanstd(video_path, mode='video'):
 def rescale_frame(img, mean=0, dev=1.0):
     mean = mean.reshape((1, 1, 3))
     dev = dev.reshape((1, 1, 3))
-    img = img - mean  # - np.array([123.68, 116.779, 103.939]).reshape((1, 1, 3))
+    img = img - mean
     img = np.true_divide(img, dev)
     return img
 
 
-def clip_dframe(img, mean=0, deviation=1.0):
-    # img = img - np.array([123.68, 116.779, 103.939]).reshape((1, 1, 3))
-    return img
+def clip_dframe(re, mean=0, dev=1.0, mode='train'):
+    mean = mean.reshape((1, 1, 3))
+    dev = dev.reshape((1, 1, 3))
+    re = re - mean
+    re = re / dev
+    if mode != 'train':
+        return re
+    else:
+        outlier = (re >= 3).sum()
+        if not outlier:
+            return re
+        else:
+            return -1
 
 
 def cvt_sensorSgn(label_path, skip_step, data_len=8):
@@ -211,13 +273,13 @@ def rescale_label(val, mean, std, model='classification'):
     #val = val / std
     if model == 'classification':
         if val > 0.2:
-            val = [0, 0, 0, 1]
+            val = [0, 0, 1]
         elif val < -0.2:
-            val = [1, 0, 0, 0]
-        elif val > -0.2 and val < 0:
-            val = [0, 1, 0, 0]
+            val = [1, 0, 0]
+        # elif val > -0.2 and val < 0:
+        #     val = [0, 1, 0, 0]
         else:
-            val = [0, 0, 1, 0]
+            val = [0, 1, 0]
     else:
         if val > 0.2:
             val = 1
@@ -291,22 +353,38 @@ if __name__ == '__main__':
     #         vd, lb = create_file_paths(range(9, 12), cond=cond, cond_typ=i)
     #         for v in vd:
     #             get_meanstd(v)
-    #########remote mean&std labels#####################################################################
+    #######remote&whole#######diff-frame mean&std file####################################################
     dict = {}
     con = ''
     col = []
     for cond in ['lighting', 'movement']:
-        if cond == 'lighting':
-            n = 6
-        else:
-            n = 4
-        for i in range(n):
-            _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-            con, col = cal_meanStd_label(lb)
-            dict[con] = col
-    with open('LabelMeanStddev.pickle', 'wb') as f:
-        pickle.dump(dict, f)
+       if cond == 'lighting':
+           n = 6
+       else:
+           n = 4
+       for i in range(n):
+           vd, _ = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+           con, col = cal_meanStd_video(vd)
+           dict[con] = col
+    with open('DiffFrameMeanStddev.pickle', 'wb') as f:
+       pickle.dump(dict, f)
     f.close()
+    #########remote mean&std labels#####################################################################
+    # dict = {}
+    # con = ''
+    # col = []
+    # for cond in ['lighting', 'movement']:
+    #     if cond == 'lighting':
+    #         n = 6
+    #     else:
+    #         n = 4
+    #     for i in range(n):
+    #         _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+    #         con, col = cal_meanStd_label(lb)
+    #         dict[con] = col
+    # with open('LabelMeanStddev.pickle', 'wb') as f:
+    #     pickle.dump(dict, f)
+    # f.close()
     #########local mean&std labels#####################################################################
     # dict = {}
     # con = ''

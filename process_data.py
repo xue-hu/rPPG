@@ -13,7 +13,7 @@ import scipy
 from scipy import fftpack
 import pickle
 from scipy.signal import butter, cheby2, lfilter
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 
 MODEL = 'classification'
@@ -199,6 +199,7 @@ def nor_diff_face(video_path, width=112, height=112):
         start_pos = (clip - 1) * CLIP_SIZE
         end_pos = clip * CLIP_SIZE
         mean, dev = utils.get_meanstd(video_path)
+        re_mean, re_dev = utils.get_meanstd(video_path, mode='diff')
         print(cond + '-' + prob_id + '-clip' + str(clip))
         for idx in range(start_pos, end_pos):
             if idx % 100 == 0:
@@ -224,7 +225,7 @@ def nor_diff_face(video_path, width=112, height=112):
             re[re == np.inf] = 0
             re = np.nan_to_num(re)
             ########### wait to implement ########################################################
-            re = utils.clip_dframe(re, deviation=3.0)
+            re = utils.clip_dframe(re, re_mean, re_dev, mode='test')
             pre_frame = utils.rescale_frame(pre_frame, mean, dev)
             ########################################################################################
             # cv2.imshow("diff", diff)
@@ -249,6 +250,7 @@ def nor_diff_clip(video_path, clip=1, width=112, height=112):
     start_pos = (clip - 1) * CLIP_SIZE
     end_pos = clip * CLIP_SIZE - 1
     mean, dev = utils.get_meanstd(video_path)
+    re_mean, re_dev = utils.get_meanstd(video_path, mode='diff')
     print(cond + '-' + prob_id + '-clip' + str(clip))
     for idx in range(start_pos, end_pos):
         if idx % 100 == 0:
@@ -265,7 +267,9 @@ def nor_diff_clip(video_path, clip=1, width=112, height=112):
         re[re == np.inf] = 0
         re = np.nan_to_num(re)
         ########### wait to implement ########################################################
-        re = utils.clip_dframe(re, deviation=3.0)
+        re = utils.clip_dframe(re, re_mean, re_dev, mode='train')
+        if re == -1:
+            continue
         pre_frame = utils.rescale_frame(pre_frame, mean, dev)
         ########################################################################################
         # cv2.imshow("diff", diff)
@@ -293,15 +297,11 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
             gt = float(gts[idx])
             label = float(labels[idx+1] - labels[idx])
             val = utils.rescale_label(label, mean, std, MODEL)
-            #if idx%100 == 0:
-                #print('input frame:')
-                #print(frame[60:63,60:63,:])
-                #print('input diff:')
-                #print(diff[60:63,60:63,:])
-                #print('label:')
-                #print(label)
             yield (frame, diff, val, gt)
-            if val[-1] or val[-2]:
+            if val[-1]:
+                yield (frame, diff, val, gt)
+            if val[-2]:
+                yield (frame, diff, val, gt)
                 yield (frame, diff, val, gt)
     else:
         diff_iterator = nor_diff_face(video_path, width=width, height=height)
@@ -327,6 +327,9 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
     random.shuffle(clips)
     paths = list(zip(video_paths, label_paths, gt_paths))
     if mode == 'train':
+        # c1_samples = []
+        # c2_samples = []
+        # c3_samples = []
         for clip in clips:
             random.shuffle(paths)
             for (video_path, label_path, gt_path) in paths:
@@ -334,7 +337,14 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
                 try:
                     while True:
                         while len(sample_li) < batch_size:
-                            sample_li.append(next(iterator))
+                            (frame, diff, label, gt) = next(iterator)
+                            sample_li.append((frame, diff, label, gt))
+                            # if label == [0, 0, 1]:
+                            #     c3_samples.append((frame, diff, val, gt))
+                            # elif label == [0, 1, 0]:
+                            #     c2_samples.append((frame, diff, val, gt))
+                            # else:
+                            #     c1_samples.append((frame, diff, val, gt))
                         random.shuffle(sample_li)
                         for (frame, diff, label, gt) in sample_li:
                             frame_batch.append(frame)
@@ -374,29 +384,34 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
 def cvt_class(m):
     duration = 30
     all = []
-    idx = 0
+    pos = 0
+    neg = 0
+    zero = 0
     for _, li in m.items():
         sgns = []
         rand = []
         hr_label = []
         for val, hr in li:
             hr_label.append(hr)
-            # if val > 1:
-            #     val = 1
-            # if val < -1:
-            #     val = -1
-            # if val ==0:
-            #     continue
+            if val > 1:
+                val = 1
+            if val < -1:
+                val = -1
+            #all.append(val)
+            if val > 0.2:
+                val = 1
+            elif val < -0.2:
+                val = -1
+            else:
+                val = 0
             all.append(val)
-            # if val > 0.2:
-            #     val = 1
-            # if val < -0.2:
-            #     val = -1
-            # if -0.2 < val < 0:
-            #     val = -0.5
-            # if 0 < val < 0.2:
-            #     val = 0.5
             sgns.append(val)
+            if val > 0:
+                pos += 1
+            elif val < 0:
+                neg += 1
+            else:
+                zero += 1
             seed = random.random()
             if seed > 0.85:
                 if val != 0:
@@ -404,45 +419,39 @@ def cvt_class(m):
                 else:
                     val = seed
             rand.append(val)
-        print(idx)
-        mean = np.mean(sgns)
-        std = np.std(sgns)
-        print(mean)
-        print(std)
-        idx += 1
         # plt.hist(sgns, bins=20)
         # plt.title("all label difference distribution")
         # plt.xlabel('value')
         # plt.ylabel('occurance')
         # plt.show()
-    #     pred = []
-    #     label = []
-    #     gt = []
-    #     for idx in range(120 - duration):
-    #         hr = cvt_hr(sgns[(idx * 30):(idx * 30 + 30 * 30)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
-    #         pred_hr = cvt_hr(rand[(idx * 30):(idx * 30 + 30 * 30)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
-    #         pred.append(pred_hr)
-    #         label.append(hr)
-    #         gt.append(hr_label[(idx + 30) * 30])
-    #     note = 0
-    #     accur = 0
-    #     for rate, g, ac in zip(gt, label, pred):
-    #         if abs(rate - g) < 5:
-    #             note += 1
-    #         if abs(rate - ac) < 5:
-    #             accur += 1
-    #     print(str(note / len(pred)) + ' - ' + str(accur / len(pred)))
+        pred = []
+        label = []
+        gt = []
+        for idx in range(120 - duration):
+            hr = cvt_hr(sgns[(idx * 30):(idx * 30 + 30 * 30)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
+            pred_hr = cvt_hr(rand[(idx * 30):(idx * 30 + 30 * 30)], 30, 30, lowcut=0.7, highcut=2.5, order=6)
+            pred.append(pred_hr)
+            label.append(hr)
+            gt.append(hr_label[(idx + 30) * 30])
+        note = 0
+        accur = 0
+        for rate, g, ac in zip(gt, label, pred):
+            if abs(rate - g) < 5:
+                note += 1
+            if abs(rate - ac) < 5:
+                accur += 1
+        print(str(note / len(pred)) + ' - ' + str(accur / len(pred)))
     # mean = np.mean(all)
     # std = np.std(all)
     # print(mean)
     # print(std)
+    print(str(neg)+' - '+str(zero)+' - '+str(pos))
     ############local: check cvt hr & gts##########################################
-    # plt.hist(all, bins=20)
-    # plt.title("all label difference distribution")
-    # plt.xlabel('value')
-    # plt.ylabel('occurance')
-    # plt.show()
-    # print(idx)
+    plt.hist(all, bins=20)
+    plt.title("all label difference distribution")
+    plt.xlabel('value')
+    plt.ylabel('occurance')
+    plt.show()
 
 if __name__ == '__main__':
     ##########batched labeled-samples######################
