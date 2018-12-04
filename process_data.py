@@ -13,6 +13,7 @@ import scipy
 from scipy import fftpack
 import pickle
 from scipy.signal import butter, cheby2, lfilter
+from imblearn.over_sampling import RandomOverSampler
 #import matplotlib.pyplot as plt
 
 
@@ -185,8 +186,8 @@ def crop_resize_face(video_path, width=112, height=112):
 
 def nor_diff_face(video_path, width=112, height=112):
     ###########remote##########################################
-    print(video_path)
-    print(os.path.exists(video_path))
+    # print(video_path)
+    # print(os.path.exists(video_path))
     path = video_path.split('/')
     prob_id = path[4]
     cond = path[5].split('_')[0]
@@ -202,8 +203,6 @@ def nor_diff_face(video_path, width=112, height=112):
         re_mean, re_dev = utils.get_meanstd(video_path, mode='diff')
         print(cond + '-' + prob_id + '-clip' + str(clip))
         for idx in range(start_pos, end_pos):
-            if idx % 100 == 0:
-                print("reading in frame " + str(idx) + "," + str(idx + 1))
             pre_path = scr_path + str(idx) + '.jpg'
             if idx == end_pos - 1 and clip != N_CLIPS:
                 print('end of clip-' + str(clip))
@@ -237,8 +236,8 @@ def nor_diff_face(video_path, width=112, height=112):
 
 def nor_diff_clip(video_path, clip=1, width=112, height=112):
     ###########remote##########################################
-    print(video_path)
-    print(os.path.exists(video_path))
+    # print(video_path)
+    # print(os.path.exists(video_path))
     path = video_path.split('/')
     prob_id = path[4]
     cond = path[5].split('_')[0]
@@ -253,8 +252,6 @@ def nor_diff_clip(video_path, clip=1, width=112, height=112):
     re_mean, re_dev = utils.get_meanstd(video_path, mode='diff')
     print(cond + '-' + prob_id + '-clip' + str(clip))
     for idx in range(start_pos, end_pos):
-        if idx % 100 == 0:
-            print("reading in frame " + str(idx) + "," + str(idx + 1))
         pre_path = scr_path + str(idx) + '.jpg'
         next_path = scr_path + str(idx + 1) + '.jpg'
         pre_frame = cv2.imread(pre_path).astype(np.float32)
@@ -294,12 +291,12 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
             frame, diff = next(diff_iterator)
             gt = float(gts[idx])
             label = float(labels[idx+1] - labels[idx])
-            val = utils.rescale_label(label, mean, std, MODEL)
+            val = utils.rescale_label(label, mean, std, 'regression')
             yield (frame, diff, val, gt)
-            if val[-1]:
-                yield (frame, diff, val, gt)
-            if val[-2]:
-                yield (frame, diff, val, gt)
+            # if val[-1]:
+            #     yield (frame, diff, val, gt)
+            # if val[-2]:
+            #     yield (frame, diff, val, gt)
     else:
         diff_iterator = nor_diff_face(video_path, width=width, height=height)
         skip_step = PLE_SAMPLE_RATE / FRAME_RATE
@@ -324,39 +321,65 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
     random.shuffle(clips)
     paths = list(zip(video_paths, label_paths, gt_paths))
     if mode == 'train':
-        # c1_samples = []
-        # c2_samples = []
-        # c3_samples = []
         for clip in clips:
             random.shuffle(paths)
             for (video_path, label_path, gt_path) in paths:
                 iterator = get_sample(video_path, label_path, gt_path, clip=clip, width=width, height=height, mode=mode)
+                sample_feat = []
+                sample_lb = []
                 try:
                     while True:
-                        while len(sample_li) < batch_size:
-                            (frame, diff, label, gt) = next(iterator)
-                            sample_li.append((frame, diff, label, gt))
-                            # if label == [0, 0, 1]:
-                            #     c3_samples.append((frame, diff, val, gt))
-                            # elif label == [0, 1, 0]:
-                            #     c2_samples.append((frame, diff, val, gt))
-                            # else:
-                            #     c1_samples.append((frame, diff, val, gt))
-                        random.shuffle(sample_li)
-                        for (frame, diff, label, gt) in sample_li:
-                            frame_batch.append(frame)
-                            diff_batch.append(diff)
-                            label_batch.append(label)
-                            gt_batch.append(gt)
-                        yield frame_batch, diff_batch, label_batch, gt_batch
-                        # print('done one batch.')
-                        frame_batch = []
-                        diff_batch = []
-                        label_batch = []
-                        gt_batch = []
-                        sample_li = []
+                        (frame, diff, label, gt) = next(iterator)
+                        sample_feat.append((frame, diff, gt))
+                        sample_lb.append(label)
                 except StopIteration:
-                    continue
+                    ros = RandomOverSampler()
+                    sample_feat, sample_lb = ros.fit_sample(sample_feat, sample_lb)
+                for idx in range(len(sample_feat)):
+                    frame, diff, gt = sample_feat[idx]
+                    label = utils.rescale_label(sample_lb[idx], mean=0, std=1.0)
+                    if len(sample_li) < batch_size:
+                        sample_li.append((frame, diff, label, gt))
+                        continue
+                    random.shuffle(sample_li)
+                    for (frame, diff, label, gt) in sample_li:
+                        frame_batch.append(frame)
+                        diff_batch.append(diff)
+                        label_batch.append(label)
+                        gt_batch.append(gt)
+                    yield frame_batch, diff_batch, label_batch, gt_batch
+                    # print('done one batch.')
+                    frame_batch = []
+                    diff_batch = []
+                    label_batch = []
+                    gt_batch = []
+                    sample_li = []
+                # try:
+                #     while True:
+                #         while len(sample_li) < batch_size:
+                #             (frame, diff, label, gt) = next(iterator)
+                #             sample_li.append((frame, diff, label, gt))
+                #             # if label == [0, 0, 1]:
+                #             #     c3_samples.append((frame, diff, val, gt))
+                #             # elif label == [0, 1, 0]:
+                #             #     c2_samples.append((frame, diff, val, gt))
+                #             # else:
+                #             #     c1_samples.append((frame, diff, val, gt))
+                #         random.shuffle(sample_li)
+                #         for (frame, diff, label, gt) in sample_li:
+                #             frame_batch.append(frame)
+                #             diff_batch.append(diff)
+                #             label_batch.append(label)
+                #             gt_batch.append(gt)
+                #         yield frame_batch, diff_batch, label_batch, gt_batch
+                #         # print('done one batch.')
+                #         frame_batch = []
+                #         diff_batch = []
+                #         label_batch = []
+                #         gt_batch = []
+                #         sample_li = []
+                # except StopIteration:
+                #     continue
     else:
         for (video_path, label_path, gt_path) in zip(video_paths, label_paths, gt_paths):
             iterator = get_sample(video_path, label_path, gt_path, width=width, height=height, mode=mode)
@@ -402,6 +425,8 @@ def cvt_class(m):
             else:
                 val = 0
             all.append(val)
+            # if val >=0:
+            #     all.append(val)
             sgns.append(val)
             if val > 0:
                 pos += 1
@@ -438,10 +463,10 @@ def cvt_class(m):
             if abs(rate - ac) < 5:
                 accur += 1
         print(str(note / len(pred)) + ' - ' + str(accur / len(pred)))
-    # mean = np.mean(all)
-    # std = np.std(all)
-    # print(mean)
-    # print(std)
+    mean = np.mean(all)
+    std = np.std(all)
+    print(mean)
+    print(std)
     print(str(neg)+' - '+str(zero)+' - '+str(pos))
     ############local: check cvt hr & gts##########################################
     plt.hist(all, bins=20)
@@ -450,7 +475,7 @@ def cvt_class(m):
     plt.ylabel('occurance')
     plt.show()
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
     ##########batched labeled-samples######################
     # train_v_paths, train_l_paths = utils.create_file_paths([2,3])
     # train_gen = get_batch(train_v_paths, train_l_paths, [1, 2], 500)
@@ -458,7 +483,7 @@ if __name__ == '__main__':
     # test_gen = get_batch(test_v_paths, test_l_paths, [1,2], 500, mode='test')
 
     #######################################################
-    #train_gen = get_batch(VIDEO_PATHS, LABEL_PATHS, GT_PATHS, [1, 2], 20)
+    #train_gen = get_batch(VIDEO_PATHS, LABEL_PATHS, GT_PATHS, np.arange(1,121), 20)
     #test_gen = get_batch(VIDEO_PATHS, GT_PATHS, [1, 2], 500, mode='test')
     # idx = 0
     # print('<<<<<<<<<train gen>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -470,10 +495,10 @@ if __name__ == '__main__':
     #         for (frame, diff, label, gt) in zip(frames, diffs, labels, gts):
     #             # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
     #             # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
-    #             cv2.imshow('face', frame)
-    #             cv2.imshow('diff', diff)
+    #             # cv2.imshow('face', frame)
+    #             # cv2.imshow('diff', diff)
     #             print(str(label)+' - '+str(gt))
-    #             cv2.waitKey(0)
+    #             #cv2.waitKey(0)
     # except StopIteration:
     #     pass
     # print('<<<<<<<<<test gen>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -499,10 +524,10 @@ if __name__ == '__main__':
     #labels_paths = utils.create_file_paths([2], sensor_sgn=1)
     ############local:read in ground truth##########################################
     ############local:read in ppg##########################################
-    with open('Pleth.pickle', 'rb') as f:
-        m = pickle.load(f)
-    f.close()
-    cvt_class(m)
+    # with open('Pleth.pickle', 'rb') as f:
+    #     m = pickle.load(f)
+    # f.close()
+    # cvt_class(m)
 
 
 

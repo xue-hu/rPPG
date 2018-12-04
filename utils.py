@@ -218,8 +218,8 @@ def get_meanstd(video_path, mode='video'):
     prob_id = t_id * 10 + u_id - 1
     cond = path[5].split('_')[0]
     #########local part##########################################
-    #cond = '101'
-    #prob_id = 0
+    # cond = '101'
+    # prob_id = 1
     #############################################################
     #print('mean&std of '+mode+': '+cond + ' ' + str(prob_id))
     mean, dev = mean_std[cond][prob_id]
@@ -282,10 +282,8 @@ def rescale_label(val, mean, std, model='classification'):
             val = 1
         elif val < -0.2:
             val = -1
-        elif -0.2 < val < 0:
-            val = -0.2
         else:
-            val = 0.2
+            val = 0
     return val
 
 
