@@ -323,37 +323,37 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
     if mode == 'train':
         for clip in clips:
             random.shuffle(paths)
+            sample_feat = []
+            sample_lb = []
             for (video_path, label_path, gt_path) in paths:
                 iterator = get_sample(video_path, label_path, gt_path, clip=clip, width=width, height=height, mode=mode)
-                sample_feat = []
-                sample_lb = []
                 try:
                     while True:
                         (frame, diff, label, gt) = next(iterator)
                         sample_feat.append((frame, diff, gt))
                         sample_lb.append(label)
                 except StopIteration:
-                    ros = RandomOverSampler()
-                    sample_feat, sample_lb = ros.fit_sample(sample_feat, sample_lb)
-                for idx in range(len(sample_feat)):
-                    frame, diff, gt = sample_feat[idx]
-                    label = utils.rescale_label(sample_lb[idx], mean=0, std=1.0)
-                    if len(sample_li) < batch_size:
-                        sample_li.append((frame, diff, label, gt))
-                        continue
-                    random.shuffle(sample_li)
-                    for (frame, diff, label, gt) in sample_li:
-                        frame_batch.append(frame)
-                        diff_batch.append(diff)
-                        label_batch.append(label)
-                        gt_batch.append(gt)
-                    yield frame_batch, diff_batch, label_batch, gt_batch
-                    # print('done one batch.')
-                    frame_batch = []
-                    diff_batch = []
-                    label_batch = []
-                    gt_batch = []
-                    sample_li = []
+                    pass
+            ros = RandomOverSampler()
+            sample_feat, sample_lb = ros.fit_sample(sample_feat, sample_lb)
+            for idx in range(len(sample_feat)):
+                frame, diff, gt = sample_feat[idx]
+                label = utils.rescale_label(sample_lb[idx], mean=0, std=1.0)
+                if len(sample_li) < batch_size:
+                    sample_li.append((frame, diff, label, gt))
+                    continue
+                random.shuffle(sample_li)
+                for (frame, diff, label, gt) in sample_li:
+                    frame_batch.append(frame)
+                    diff_batch.append(diff)
+                    label_batch.append(label)
+                    gt_batch.append(gt)
+                yield frame_batch, diff_batch, label_batch, gt_batch
+                frame_batch = []
+                diff_batch = []
+                label_batch = []
+                gt_batch = []
+                sample_li = []
                 # try:
                 #     while True:
                 #         while len(sample_li) < batch_size:
