@@ -6,20 +6,28 @@ import scipy
 from scipy import fftpack
 from scipy.signal import butter, cheby2, lfilter
 import struct
+import imblearn
+from imblearn.over_sampling import RandomOverSampler
 #import matplotlib.pyplot as plt
 
 LABEL_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin'
 GT_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/6_Pulse.bin'
+
+
+ros = RandomOverSampler()
+X_ros, y_ros = ros.fit_sample(X, y)
+
+
 ############check calculated mean&std##########################################
 #with open('LabelMeanStddev.pickle', 'rb') as f:
 # with open('LabelMeanStddev.pickle', 'rb') as f:
-with open('DiffFrameMeanStddev.pickle', 'rb') as f:
-    m = pickle.load(f)
+# with open('DiffFrameMeanStddev.pickle', 'rb') as f:
+#     m = pickle.load(f)
 #for li in m['101']:
 #    print(li)
-print(m['101'][1])
-print(m['101'][12])
-print(m['101'][21])
+# print(m['101'][1])
+# print(m['101'][12])
+# print(m['101'][21])
 
 # video_paths=['a','b','c','d']
 # label_paths=['A','B','C','D']
