@@ -17,7 +17,7 @@ from imblearn.over_sampling import RandomOverSampler, SMOTE
 #import matplotlib.pyplot as plt
 
 
-MODEL = 'classification'
+MODEL = 'regression'
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
 FRAME_RATE = 30.0
@@ -366,9 +366,9 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
                     pass
             print(str(c1)+' - '+str(c2)+' - '+str(c3)+' - '+str(c4))
            # random.shuffle(sample_feat)
-            ros = RandomOverSampler(sampling_strategy='auto')
+           # ros = RandomOverSampler(sampling_strategy='auto')
            # ros = SMOTE()
-            sample_feat, sample_lb = ros.fit_sample(sample_feat, sample_lb)
+           # sample_feat, sample_lb = ros.fit_sample(sample_feat, sample_lb)
             c1 = 0
             c2 = 0
             c3 = 0
@@ -376,15 +376,15 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
             for idx in range(len(sample_feat)):
                 frame, diff, gt = sample_feat[idx]
                 label = sample_lb[idx]
-                label = utils.rescale_label(sample_lb[idx], mean=0, std=1.0)
-                if np.argmax(label) ==3:
-                    c4 += 1
-                elif np.argmax(label) == 0:
-                    c1 += 1
-                elif np.argmax(label) == 1:
-                    c2 += 1
-                else:
-                    c3 += 1
+               # label = utils.rescale_label(sample_lb[idx], mean=0, std=1.0)
+               # if np.argmax(label) ==3:
+               #     c4 += 1
+               # elif np.argmax(label) == 0:
+               #     c1 += 1
+               # elif np.argmax(label) == 1:
+               #     c2 += 1
+               # else:
+               #     c3 += 1
            # for frame, diff, label, gt in sample_feat:
                 if len(sample_li) < batch_size:
                     sample_li.append((frame, diff, label, gt))

@@ -205,24 +205,24 @@ def cal_meanStd_label(label_paths, data_len=8):
 def rescale_label(val, mean, std, model='classification'):
     val = val - mean
     val = val / std
-    if model == 'classification':
-        if val > 0.4:
-            val = [0, 0, 0, 1]
-        elif val < -0.4:
-            val = [1, 0, 0, 0]
-        elif 0 < val < 0.4:
-            val = [0, 0, 1, 0]
-        else:
-            val = [0, 1, 0, 0]
-    else:
-        if val > 0.4:
-            val = 1
-        elif val < -0.4:
-            val = -1
-        elif 0 < val < 0.4:
-            val = 0.2
-        else:
-            val = -0.2
+#    if model == 'classification':
+#        if val > 0.4:
+#            val = [0, 0, 0, 1]
+#        elif val < -0.4:
+#            val = [1, 0, 0, 0]
+#        elif 0 < val < 0.4:
+#            val = [0, 0, 1, 0]
+#        else:
+#            val = [0, 1, 0, 0]
+#    else:
+#        if val > 0.4:
+#            val = 1
+#        elif val < -0.4:
+#            val = -1
+#        elif 0 < val < 0.4:
+#            val = 0.2
+#        else:
+#            val = -0.2
     return val
 
 

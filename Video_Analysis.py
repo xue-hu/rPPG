@@ -67,7 +67,8 @@ class VideoAnalysis(object):
             self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff',
                                          shape=[self.batch_size, self.width, self.height, 3])
         with tf.name_scope('labels'):
-            self.labels = tf.placeholder(dtype=tf.float32, name='ppg_diff', shape=[self.batch_size, N_CLASSES])
+            #self.labels = tf.placeholder(dtype=tf.float32, name='ppg_diff', shape=[self.batch_size, N_CLASSES])
+            self.labels = tf.placeholder(dtype=tf.float32, name='ppg_diff', shape=[self.batch_size, ])
         with tf.name_scope('dropout'):
             self.keep_prob = tf.placeholder(dtype=tf.float32, name='dropout_prob', shape=[])
         self.model = loading_model.NnModel(self.input_img, self.input_diff, self.keep_prob)
@@ -75,7 +76,8 @@ class VideoAnalysis(object):
         self.model.two_stream_vgg_load()
 
     def inference(self):
-        self.logits = tf.reshape(self.model.output, shape=[self.batch_size, N_CLASSES])
+        #self.logits = tf.reshape(self.model.output, shape=[self.batch_size, N_CLASSES])
+        self.logits = tf.reshape(self.model.output, shape=[self.batch_size,])
 
 
     def loss(self):
@@ -265,18 +267,18 @@ if __name__ == '__main__':
 #            tr_lb_paths += tr_lb_path
 #            te_vd_paths += te_vd_path
 #            te_lb_paths += te_lb_path
-#     s_p = [2, 3, 4, 6, 7, 9, 10]
-#     p = range(12, 15)
-#     s_p += p
-#     temp = [2, 4, 5, 6, 10, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 26]
-#     test = [14]
-#     tr_vd_paths, tr_lb_paths = utils.create_file_paths(temp)
-#     _, tr_gt_paths = utils.create_file_paths(temp, sensor_sgn=0)
-#     te_vd_paths, te_lb_paths = utils.create_file_paths(test)
-#     _, te_gt_paths = utils.create_file_paths(test, sensor_sgn=0)
-#     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, tr_gt_paths, te_vd_paths, te_lb_paths, te_gt_paths, img_width=128, img_height=128)
+     s_p = [2, 3, 4, 6, 7, 9, 10]
+     p = range(12, 15)
+     s_p += p
+     temp = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23,  26]
+     test = [14]
+     tr_vd_paths, tr_lb_paths = utils.create_file_paths(temp)
+     _, tr_gt_paths = utils.create_file_paths(temp, sensor_sgn=0)
+     te_vd_paths, te_lb_paths = utils.create_file_paths(test)
+     _, te_gt_paths = utils.create_file_paths(test, sensor_sgn=0)
+     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, tr_gt_paths, te_vd_paths, te_lb_paths, te_gt_paths, img_width=128, img_height=128)
     ######################################################################################
-    model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TRAIN_GT_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS,
-                          TEST_GT_PATHS, img_height=128, img_width=128)
-    model.build_graph()
-    model.train(100)
+  #  model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TRAIN_GT_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS,
+   #                       TEST_GT_PATHS, img_height=128, img_width=128)
+     model.build_graph()
+     model.train(100)
