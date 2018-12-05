@@ -317,7 +317,7 @@ def cheby2_bandpass_filter(data, rs, lowcut, highcut, fs, order):
     return y
 
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
     #######remote&whole#######mean&std file####################################################
     #dict = {}
     #for cond in ['lighting','movement']:
