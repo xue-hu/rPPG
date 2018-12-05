@@ -13,7 +13,7 @@ import scipy
 from scipy import fftpack
 import pickle
 from scipy.signal import butter, cheby2, lfilter
-from imblearn.over_sampling import RandomOverSampler
+from imblearn.over_sampling import RandomOverSampler, SMOTE
 #import matplotlib.pyplot as plt
 
 
@@ -291,12 +291,13 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
             frame, diff = next(diff_iterator)
             gt = float(gts[idx])
             label = float(labels[idx+1] - labels[idx])
-            val = utils.rescale_label(label, mean, std, 'regression')
+            #val = utils.rescale_label(label, mean, std, 'regression')
+            val = utils.rescale_label(label, mean, std, 'classification')
             yield (frame, diff, val, gt)
-            # if val[-1]:
-            #     yield (frame, diff, val, gt)
-            # if val[-2]:
-            #     yield (frame, diff, val, gt)
+           # if val[-1]:
+           #     yield (frame, diff, val, gt)
+            if val[-2]:
+                yield (frame, diff, val, gt)
     else:
         diff_iterator = nor_diff_face(video_path, width=width, height=height)
         skip_step = PLE_SAMPLE_RATE / FRAME_RATE
@@ -330,15 +331,21 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
                 try:
                     while True:
                         (frame, diff, label, gt) = next(iterator)
-                        sample_feat.append((frame, diff, gt))
-                        sample_lb.append(label)
+                        #sample_feat.append((frame, diff, gt))
+                        #sample_lb.append(label)
+                        sample_feat.append((frame, diff, label, gt))
                 except StopIteration:
                     pass
-            ros = RandomOverSampler()
-            sample_feat, sample_lb = ros.fit_sample(sample_feat, sample_lb)
-            for idx in range(len(sample_feat)):
-                frame, diff, gt = sample_feat[idx]
-                label = utils.rescale_label(sample_lb[idx], mean=0, std=1.0)
+            print(len(sample_feat))
+            random.shuffle(sample_feat)
+           # ros = RandomOverSampler()
+           # ros = SMOTE()
+           # sample_feat, sample_lb = ros.fit_sample(sample_feat, sample_lb)
+          #  for idx in range(len(sample_feat)):
+          #      frame, diff, gt = sample_feat[idx]
+          #      label = sample_lb[idx]
+                #label = utils.rescale_label(sample_lb[idx], mean=0, std=1.0)
+            for frame, diff, label, gt in sample_feat:
                 if len(sample_li) < batch_size:
                     sample_li.append((frame, diff, label, gt))
                     continue
