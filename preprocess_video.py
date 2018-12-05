@@ -34,9 +34,6 @@ def create_video_clip(video_paths, width=128, height=128):
         ##################################################################
         print(cond)
         print(prob_id)
-        if cond == '101' or cond =='102' or cond == '103':
-            print('<<<<<<<<<<<skip>>>>>>>>>>>')
-            continue
         capture = cv2.VideoCapture()
         capture.open(video_path)
         if not capture.isOpened():
@@ -94,7 +91,7 @@ def get_remote_label(label_paths, gt_paths):
     return s_dict
 
 
-#if __name__ == '__main__':
+if __name__ == '__main__':
     #########1.remote-prepro all videos######################
     # for cond in ['lighting', 'movement']:
     #     if cond == 'lighting':
@@ -106,10 +103,10 @@ def get_remote_label(label_paths, gt_paths):
     #         create_video_clip(vd)
     # create_video_clip(VIDEO_PATHS)
     #########2.remote-prepro part of videos######################
-    # vd, _ = utils.create_file_paths([9, 10])
-    # v_d, _ = utils.create_file_paths(range(12, 27 ))
-    # vd += v_d
-    # create_video_clip(vd)
+    vd, _ = utils.create_file_paths([16], cond='lighting', cond_typ=1)
+    #v_d, _ = utils.create_file_paths(range(12, 27 ))
+    #vd += v_d
+    create_video_clip(vd)
     ##########3.local-prepro part of videos######################
     #create_video_clip(VIDEO_PATHS)
     ############get remote ppg-diff#########################################

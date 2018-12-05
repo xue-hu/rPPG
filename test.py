@@ -14,8 +14,13 @@ LABEL_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C9
 GT_PATHS = 'D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/6_Pulse.bin'
 
 
-ros = RandomOverSampler()
-X_ros, y_ros = ros.fit_sample(X, y)
+a=[[1,1],[2,2],[3,3]]
+b=[[4,4],[5,5],[6,6]]
+c = []
+c.append(a)
+c.append(b)
+d = np.mean(c, axis=(0,1,2))
+print(d)
 
 
 ############check calculated mean&std##########################################

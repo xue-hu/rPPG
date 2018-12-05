@@ -175,7 +175,7 @@ class NnModel(object):
         # self.dropout_layer(self.d_pool5)
         # self.avgpool(self.s_conv5_4, 'pool5', stream_name='s')
 
-        self.fully_connected_layer(self.d_pool2, 128, 'fc6')
+        self.fully_connected_layer(self.d_pool2, 64, 'fc6')
         self.dropout_layer(self.fc6)
         self.fully_connected_layer(self.fc6, 128, 'fc7')
         if MODEL == 'regression':
