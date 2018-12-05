@@ -51,14 +51,6 @@ class VideoAnalysis(object):
                                            width=self.width, height=self.height, mode=mode)
         return batch_gen
 
-    # def create_training_input(self, train_video_path, train_label_path):
-    #     print("create new training-set generator.....")
-    #     self.train_gen = self.get_data(train_video_path, train_label_path)
-    #
-    # def create_testing_input(self, test_video_path, test_label_path):
-    #     print("create new testing-set generator.....")
-    #     self.test_gen = self.get_data(test_video_path, test_label_path)
-
     def loading_model(self):
         with tf.name_scope('Static_Input'):
             self.input_img = tf.placeholder(dtype=tf.float32, name='input_img',
@@ -67,8 +59,10 @@ class VideoAnalysis(object):
             self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff',
                                          shape=[self.batch_size, self.width, self.height, 3])
         with tf.name_scope('labels'):
-            #self.labels = tf.placeholder(dtype=tf.float32, name='ppg_diff', shape=[self.batch_size, N_CLASSES])
-            self.labels = tf.placeholder(dtype=tf.float32, name='ppg_diff', shape=[self.batch_size, ])
+            if MODEL == 'regression':
+                self.labels = tf.placeholder(dtype=tf.float32, name='ppg_diff', shape=[self.batch_size, ])
+            else:
+                self.labels = tf.placeholder(dtype=tf.float32, name='ppg_diff', shape=[self.batch_size, N_CLASSES])
         with tf.name_scope('dropout'):
             self.keep_prob = tf.placeholder(dtype=tf.float32, name='dropout_prob', shape=[])
         self.model = loading_model.NnModel(self.input_img, self.input_diff, self.keep_prob)
@@ -76,8 +70,10 @@ class VideoAnalysis(object):
         self.model.two_stream_vgg_load()
 
     def inference(self):
-        #self.logits = tf.reshape(self.model.output, shape=[self.batch_size, N_CLASSES])
-        self.logits = tf.reshape(self.model.output, shape=[self.batch_size,])
+        if MODEL == 'regression':
+            self.logits = tf.reshape(self.model.output, shape=[self.batch_size,])
+        else:
+            self.logits = tf.reshape(self.model.output, shape=[self.batch_size, N_CLASSES])
 
 
     def loss(self):

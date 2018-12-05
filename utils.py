@@ -205,6 +205,10 @@ def cal_meanStd_label(label_paths, data_len=8):
 def rescale_label(val, mean, std, model='classification'):
     val = val - mean
     val = val / std
+    if val > 10:
+        val = 10
+    if val < -10:
+        val = -10
 #    if model == 'classification':
 #        if val > 0.4:
 #            val = [0, 0, 0, 1]
@@ -370,19 +374,19 @@ if __name__ == '__main__':
     #    pickle.dump(dict, f)
     # f.close()
     #########remote mean&std labels#####################################################################
-    dict = {}
-    for cond in ['lighting', 'movement']:
-        if cond == 'lighting':
-            n = 6
-        else:
-            n = 4
-        for i in range(n):
-            _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-            con, col = cal_meanStd_label(lb)
-            dict[con] = col
-    with open('LabelMeanStddev.pickle', 'wb') as f:
-        pickle.dump(dict, f)
-    f.close()
+    # dict = {}
+    # for cond in ['lighting', 'movement']:
+    #     if cond == 'lighting':
+    #         n = 6
+    #     else:
+    #         n = 4
+    #     for i in range(n):
+    #         _, lb = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+    #         con, col = cal_meanStd_label(lb)
+    #         dict[con] = col
+    # with open('LabelMeanStddev.pickle', 'wb') as f:
+    #     pickle.dump(dict, f)
+    # f.close()
     #########local mean&std labels#####################################################################
     # dict = {}
     # con = ''

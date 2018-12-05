@@ -300,10 +300,7 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
             gt = float(gts[idx])
             label = float(labels[idx+1] - labels[idx])
             val = utils.rescale_label(label, mean, std, 'regression')
-            #val = utils.rescale_label(label, mean, std, 'classification')
             yield (frame, diff, val, gt)
-            #if val[-1] or val[-2]:
-             #   yield (frame, diff, val, gt)
     else:
         diff_iterator = nor_diff_face(video_path, width=width, height=height)
         skip_step = PLE_SAMPLE_RATE / FRAME_RATE
@@ -333,59 +330,22 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
         for clip in clips:
             random.shuffle(paths)
             sample_feat = []
-            sample_lb = []
-            c1 = 0
-            c2 = 0
-            c3 = 0
-            c4 = 0
+            #sample_lb = []
             for (video_path, label_path, gt_path) in paths:
                 iterator = get_sample(video_path, label_path, gt_path, clip=clip, width=width, height=height, mode=mode)
                 try:
                     while True:
                         (frame, diff, label, gt) = next(iterator)
-                        sample_feat.append((frame, diff, gt))
-                        sample_lb.append(label)
-                        if label ==1:
-                            c4 += 1
-                        elif label == -1:
-                            c1 += 1
-                        elif label == -0.2:
-                            c2 += 1
-                        else:
-                            c3 += 1
-                        #if np.argmaxi(label) ==3:
-                        #    c4 += 1
-                        #elif np.argmax(label) == 0:
-                        #    c1 += 1
-                        #elif np.argmax(label) == 1:
-                        #    c2 += 1
-                        #else:
-                        #    c3 += 1
+                        sample_feat.append((frame, diff, label, gt))
+                        #sample_lb.append(label)
                        # sample_feat.append((frame, diff, label, gt))
                 except StopIteration:
                     pass
-            print(str(c1)+' - '+str(c2)+' - '+str(c3)+' - '+str(c4))
-           # random.shuffle(sample_feat)
+            random.shuffle(sample_feat)
            # ros = RandomOverSampler(sampling_strategy='auto')
            # ros = SMOTE()
            # sample_feat, sample_lb = ros.fit_sample(sample_feat, sample_lb)
-            c1 = 0
-            c2 = 0
-            c3 = 0
-            c4 = 0
-            for idx in range(len(sample_feat)):
-                frame, diff, gt = sample_feat[idx]
-                label = sample_lb[idx]
-               # label = utils.rescale_label(sample_lb[idx], mean=0, std=1.0)
-               # if np.argmax(label) ==3:
-               #     c4 += 1
-               # elif np.argmax(label) == 0:
-               #     c1 += 1
-               # elif np.argmax(label) == 1:
-               #     c2 += 1
-               # else:
-               #     c3 += 1
-           # for frame, diff, label, gt in sample_feat:
+           for frame, diff, label, gt in sample_feat:
                 if len(sample_li) < batch_size:
                     sample_li.append((frame, diff, label, gt))
                     continue
@@ -401,8 +361,6 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
                 label_batch = []
                 gt_batch = []
                 sample_li = []
-            print(str(c1)+' - '+str(c2)+' - '+str(c3)+' - '+str(c4))
-          
                 # try:
                 #     while True:
                 #         while len(sample_li) < batch_size:
