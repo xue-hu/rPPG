@@ -9,8 +9,8 @@ import numpy as np
 import cv2
 
 # VGG-19 parameters file
-MODEL = 'classification'
-N_CLASSES = 4
+MODEL = 'regression'
+N_CLASSES = 1
 VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat'
 VGG_FILENAME = 'imagenet-vgg-verydeep-19.mat'
 EXPECTED_BYTES = 534904783
