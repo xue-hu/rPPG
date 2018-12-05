@@ -106,6 +106,8 @@ def cal_meanStd_video(video_paths, width=256, height=256):
                 if idx % 100 == 0:
                     print("reading in frame " + str(idx) + "," + str(idx + 1))
                 pre_path = scr_path + str(idx) + '.jpg'
+                if not os.path.exists(pre_path):
+                    continue
             #    print(os.path.exists(pre_path))
              #   print(os.path.exists(next_path))
                 frame = cv2.imread(pre_path).astype(np.float32)
@@ -152,6 +154,8 @@ def cal_meanStd_vdiff(video_paths, width=256, height=256):
                     next_path = scr_path + str(idx + 1) + '.jpg'
             #    print(os.path.exists(pre_path))
              #   print(os.path.exists(next_path))
+                if not ( os.path.exists(pre_path) and os.path.exists(next_path)):
+                    continue
                 pre_frame = cv2.imread(pre_path).astype(np.float32)
                 next_frame = cv2.imread(next_path).astype(np.float32)
                 diff = np.subtract(next_frame, pre_frame)

@@ -214,6 +214,9 @@ def nor_diff_face(video_path, width=112, height=112):
                 raise StopIteration
             else:
                 next_path = scr_path + str(idx + 1) + '.jpg'
+            if not (os.path.exists(next_path) and os.path.exists(pre_path)):
+                yield False, False
+                continue
             pre_frame = cv2.imread(pre_path).astype(np.float32)
             next_frame = cv2.imread(next_path).astype(np.float32)
             # pre_frame = cv2.resize(pre_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
@@ -254,6 +257,9 @@ def nor_diff_clip(video_path, clip=1, width=112, height=112):
     for idx in range(start_pos, end_pos):
         pre_path = scr_path + str(idx) + '.jpg'
         next_path = scr_path + str(idx + 1) + '.jpg'
+        if not ( os.path.exists(next_path) and os.path.exists(pre_path) ):
+            yield False, False
+            continue
         pre_frame = cv2.imread(pre_path).astype(np.float32)
         next_frame = cv2.imread(next_path).astype(np.float32)
         # pre_frame = cv2.resize(pre_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
@@ -289,6 +295,8 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
         end_pos = clip * CLIP_SIZE - 1
         for idx in range(start_pos, end_pos):
             frame, diff = next(diff_iterator)
+            if frame == False:
+                continue
             gt = float(gts[idx])
             label = float(labels[idx+1] - labels[idx])
             #val = utils.rescale_label(label, mean, std, 'regression')
@@ -307,6 +315,8 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
         gts = utils.cvt_sensorSgn(gt_path, gt_skip_step)
         for idx in range(N_FRAME - 1):
             frame, diff = next(diff_iterator)
+            if frame == False:
+                continue
             gt = float(gts[idx])
             label = float(labels[idx + 1] - labels[idx])
             val = utils.rescale_label(label, mean, std, MODEL)
