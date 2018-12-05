@@ -10,7 +10,7 @@ import cv2
 
 # VGG-19 parameters file
 MODEL = 'classification'
-N_CLASSES = 3
+N_CLASSES = 4
 VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat'
 VGG_FILENAME = 'imagenet-vgg-verydeep-19.mat'
 EXPECTED_BYTES = 534904783

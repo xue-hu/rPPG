@@ -189,12 +189,12 @@ def cal_meanStd_label(label_paths, data_len=8):
         labels = cvt_sensorSgn(label_path, skip_step)
         for idx in range(len(labels) - 1):
             val = float(labels[idx + 1] - labels[idx])
-            if val > 0.2:
-                val = 1
-            elif val < -0.2:
-                val = -1
-            else:
-                val = 0
+          #  if val > 0.2:
+          #      val = 1
+          #  elif val < -0.2:
+          #      val = -1
+          #  else:
+          #      val = 0
             file_label.append(val)
         mean = np.mean(file_label)
         std = np.std(file_label)
@@ -203,22 +203,26 @@ def cal_meanStd_label(label_paths, data_len=8):
 
 
 def rescale_label(val, mean, std, model='classification'):
+    val = val - mean
+    val = val / std
     if model == 'classification':
-        if val > 0.2:
-            val = [0, 0, 1]
-        elif val < -0.2:
-            val = [1, 0, 0]
-        # elif val > -0.2 and val < 0:
-        #     val = [0, 1, 0, 0]
+        if val > 0.4:
+            val = [0, 0, 0, 1]
+        elif val < -0.4:
+            val = [1, 0, 0, 0]
+        elif 0 < val < 0.4:
+            val = [0, 0, 1, 0]
         else:
-            val = [0, 1, 0]
+            val = [0, 1, 0, 0]
     else:
-        if val > 0.2:
+        if val > 0.4:
             val = 1
-        elif val < -0.2:
+        elif val < -0.4:
             val = -1
+        elif 0 < val < 0.4:
+            val = 0.2
         else:
-            val = 0
+            val = -0.2
     return val
 
 
@@ -311,19 +315,19 @@ def cheby2_bandpass_filter(data, rs, lowcut, highcut, fs, order):
 
 if __name__ == '__main__':
     #######remote&whole#######mean&std file####################################################
-    dict = {}
-    for cond in ['lighting','movement']:
-       if cond == 'lighting':
-           n = 6
-       else:
-           n = 4
-       for i in range(n):
-           vd, _ = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-           con, col = cal_meanStd_video(vd)
-           dict[con] = col
-    with open('MeanStddev.pickle', 'wb') as f:
-       pickle.dump(dict, f)
-    f.close()
+    #dict = {}
+    #for cond in ['lighting','movement']:
+    #   if cond == 'lighting':
+    #       n = 6
+    #   else:
+    #       n = 4
+    #   for i in range(n):
+    #       vd, _ = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+    #       con, col = cal_meanStd_video(vd)
+    #       dict[con] = col
+    #with open('MeanStddev.pickle', 'wb') as f:
+    #   pickle.dump(dict, f)
+    #f.close()
     ##########remote&part#####mean&std file###############################################################
     # dict = {}
     # vd, _ = create_file_paths(range(1, 27))
@@ -344,19 +348,19 @@ if __name__ == '__main__':
     #         for v in vd:
     #             get_meanstd(v)
     #######remote&whole#######diff-frame mean&std file####################################################
-    dict = {}
-    for cond in ['lighting','movement']:
-       if cond == 'lighting':
-           n = 6
-       else:
-           n = 4
-       for i in range(n):
-           vd, _ = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
-           con, col = cal_meanStd_video(vd)
-           dict[con] = col
-    with open('DiffFrameMeanStddev.pickle', 'wb') as f:
-       pickle.dump(dict, f)
-    f.close()
+    #dict = {}
+    #for cond in ['lighting','movement']:
+    #   if cond == 'lighting':
+    #       n = 6
+    #   else:
+    #       n = 4
+    #   for i in range(n):
+    #       vd, _ = create_file_paths(range(1, 27), cond=cond, cond_typ=i)
+    #       con, col = cal_meanStd_video(vd)
+    #       dict[con] = col
+    #with open('DiffFrameMeanStddev.pickle', 'wb') as f:
+    #   pickle.dump(dict, f)
+    #f.close()
     #######remote&part#######diff-frame mean&std file####################################################
     # dict = {}
     # vd, _ = create_file_paths(range(1, 27))

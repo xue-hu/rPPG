@@ -18,7 +18,7 @@ ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
 FRAME_RATE = 30.0
 MODEL = 'classification'
-N_CLASSES = 3
+N_CLASSES = 4
 TRAIN_VIDEO_PATHS = ['D:\PycharmsProject\yutube8M\data\Logitech HD Pro Webcam C920.avi']
 TRAIN_LABEL_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/5_Pleth.bin']
 TRAIN_GT_PATHS = ['D:/PycharmsProject/yutube8M/data/synced_Logitech HD Pro Webcam C920/6_Pulse.bin']
@@ -198,9 +198,9 @@ class VideoAnalysis(object):
                         pred = np.argmax(pred, axis=1)
                         print(pred[:3])
                         pred[pred == 0] = -1
-                        pred[pred == 1] = 0
-                        pred[pred == 2] = 1
-                       # pred[pred == 3] = 1
+                        pred[pred == 1] = -0.2
+                        pred[pred == 2] = 0.2
+                        pred[pred == 3] = 1
                         pred = pred.tolist()
                         print(pred[:3])
                     ppgs += pred
