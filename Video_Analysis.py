@@ -41,7 +41,7 @@ class VideoAnalysis(object):
         self.height = img_height
         self.duration = 30
         self.lr = 0.01
-        self.batch_size = 64
+        self.batch_size = 32
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 700
 
@@ -84,6 +84,7 @@ class VideoAnalysis(object):
             #self.loss = tf.reduce_mean(self.entropy, name='loss')
             ###########regression#####################################################################
             self.loss = tf.losses.mean_squared_error(self.logits, self.labels)
+            #self.loss = tf.losses.absolute_difference(self.logits, self.labels)
 
     def evaluation(self):
         print("create evaluation methods.....")
@@ -113,6 +114,8 @@ class VideoAnalysis(object):
         #summary_ppg_accuracy = tf.summary.scalar('ppg_accuracy', self.ppg_accuracy)
         summary_hr_accuracy = tf.summary.scalar('hr_accuracy', self.hr_accuracy)
         summary_grad = tf.summary.merge([tf.summary.histogram("%s-grad" % g[1].name, g[0]) for g in self.grads])
+            te_vd_paths += te_vd_path
+            te_lb_paths += te_lb_path
         summary_train = tf.summary.merge([summary_loss, summary_grad])#, summary_ppg_accuracy])
         summary_test = tf.summary.merge([summary_loss, summary_hr_accuracy])#, summary_ppg_accuracy])
         return summary_train, summary_test
@@ -247,34 +250,40 @@ class VideoAnalysis(object):
 
 if __name__ == '__main__':
     ############using remote dataset######################################################
-#    tr_vd_paths = []
-#    tr_lb_paths = []
-#    te_vd_paths = []
-#    te_lb_paths = []
-#    for cond in ['lighting','movement']:
-#        if cond == 'lighting':
-#            n = 6
-#        else:
-#            n = 4
-#        for i in range(1):
-#            tr_vd_path, tr_lb_path = utils.create_file_paths([2], cond=cond, cond_typ=i)
-#            te_vd_path, te_lb_path = utils.create_file_paths([4], cond=cond, cond_typ=i)
-#            tr_vd_paths += tr_vd_path
-#            tr_lb_paths += tr_lb_path
-#            te_vd_paths += te_vd_path
-#            te_lb_paths += te_lb_path
-     s_p = [2, 3, 4, 6, 7, 9, 10]
-     p = range(12, 15)
-     s_p += p
-     temp = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23,  26]
-     test = [14]
-     tr_vd_paths, tr_lb_paths = utils.create_file_paths(temp)
-     _, tr_gt_paths = utils.create_file_paths(temp, sensor_sgn=0)
-     te_vd_paths, te_lb_paths = utils.create_file_paths(test)
-     _, te_gt_paths = utils.create_file_paths(test, sensor_sgn=0)
-     model = VideoAnalysis(tr_vd_paths, tr_lb_paths, tr_gt_paths, te_vd_paths, te_lb_paths, te_gt_paths, img_width=128, img_height=128)
+    tr_vd_paths = []
+    tr_lb_paths = []
+    tr_gt_paths = []
+    te_vd_paths = []
+    te_lb_paths = []
+    te_gt_paths = []
+    for cond in ['lighting']: #,'movement']:
+        if cond == 'lighting':
+            n = 6
+        else:
+            n = 4
+        for i in range(n):
+            tr_vd_path, tr_lb_path = utils.create_file_paths(np.delete(np.arange(1, 27), 2), cond=cond, cond_typ=i)
+            _, tr_gt_path = utils.create_file_paths(np.delete(np.arange(1, 27), 2), cond=cond, cond_typ=i, sensor_sgn=0)
+            te_vd_path, te_lb_path = utils.create_file_paths([3], cond=cond, cond_typ=i)
+            _, te_gt_path = utils.create_file_paths([3], cond=cond, cond_typ=i, sensor_sgn=0)
+            tr_vd_paths += tr_vd_path
+            tr_lb_paths += tr_lb_path
+            tr_gt_paths += tr_gt_path
+            te_vd_paths += te_vd_path
+            te_lb_paths += te_lb_path
+            te_gt_paths += te_gt_path
+#     s_p = [2, 3, 4, 6, 7, 9, 10]
+#     p = range(12, 15)
+#     s_p += p
+#     temp = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23,  26]
+#     test = [14]
+#     tr_vd_paths, tr_lb_paths = utils.create_file_paths(temp)
+#     _, tr_gt_paths = utils.create_file_paths(temp, sensor_sgn=0)
+#     te_vd_paths, te_lb_paths = utils.create_file_paths(test)
+#     _, te_gt_paths = utils.create_file_paths(test, sensor_sgn=0)
+    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, tr_gt_paths, te_vd_paths, te_lb_paths, te_gt_paths, img_width=128, img_height=128)
     ######################################################################################
   #  model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TRAIN_GT_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS,
    #                       TEST_GT_PATHS, img_height=128, img_width=128)
-     model.build_graph()
-     model.train(100)
+    model.build_graph()
+    model.train(100)

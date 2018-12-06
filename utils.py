@@ -205,10 +205,10 @@ def cal_meanStd_label(label_paths, data_len=8):
 def rescale_label(val, mean, std, model='classification'):
     val = val - mean
     val = val / std
-    if val > 10:
-        val = 10
-    if val < -10:
-        val = -10
+    if val > 1:
+        val = 1
+    if val < -1:
+        val = -1
 #    if model == 'classification':
 #        if val > 0.4:
 #            val = [0, 0, 0, 1]
@@ -234,7 +234,7 @@ def rescale_frame(img, mean=0, dev=1.0):
     mean = mean.reshape((1, 1, 3))
     dev = dev.reshape((1, 1, 3))
     img = img - mean
-    img = np.true_divide(img, dev)
+   # img = np.true_divide(img, dev)
     return img
 
 
@@ -245,6 +245,8 @@ def clip_dframe(re, mean=0, dev=1.0):
     re = np.true_divide(re, dev)
     re[np.where(re>3)] = 3
     re[np.where(re<-3)] = -3
+   # re = re * dev
+   # re += mean
     return re
 
 
