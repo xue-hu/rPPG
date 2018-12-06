@@ -27,7 +27,7 @@ class NnModel(object):
         utils.download(VGG_DOWNLOAD_LINK, VGG_FILENAME, EXPECTED_BYTES)
         self.vgg = scipy.io.loadmat(VGG_FILENAME)['layers']
         self.mean_pixels = np.array([123.68, 116.779, 103.939]).reshape((1, 1, 1, 3))
-        self.t = 0
+        #self.t = 0
 
     def __vgg_weights(self, lyr_idx, lyr_name):
         print(self.vgg[0][lyr_idx][0][0][1][0])
@@ -64,8 +64,8 @@ class NnModel(object):
         w_init = tf.convert_to_tensor(w_init, dtype=tf.float32)
         b_init = tf.convert_to_tensor(b_init, dtype=tf.float32)
         with tf.variable_scope((stream_name+'_'+lyr_name), reuse=tf.AUTO_REUSE) as scope:
-          #  w = tf.get_variable(name="weight", dtype=tf.float32, initializer=w_init)
-          #  b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init)
+        #    w = tf.get_variable(name="weight", dtype=tf.float32, initializer=w_init)
+         #   b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init)
             w = tf.get_variable("weight", dtype=tf.float32, shape=w_init.shape, initializer=tf.random_normal_initializer(stddev=0.5))
             b = tf.get_variable("bias", dtype=tf.float32, shape=b_init.shape,initializer=tf.constant_initializer(0.0))
             conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
@@ -73,11 +73,11 @@ class NnModel(object):
         print(lyr_name)
         print(w.shape)
         print(out.shape)
-        a = w.shape.as_list()
-        d = a[0] * a[1] * a[2] * a[3]
-        self.t += d
-        print(d)
-        print(self.t)
+        #a = w.shape.as_list()
+        #d = a[0] * a[1] * a[2] * a[3]
+        #self.t += d
+        #print(d)
+        #print(self.t)
         setattr(self, (stream_name + '_' + lyr_name), out)
 
     def fully_connected_layer(self, pre_lyr, out_dims, lyr_name, last_lyr=False):
@@ -96,11 +96,11 @@ class NnModel(object):
         print(lyr_name)
         print(w.shape)
         print(out.shape)
-        a = w.shape.as_list()
-        d = a[0]*a[1]*a[2]*a[3]
-        self.t += d
-        print(d)
-        print(self.t)
+        #a = w.shape.as_list()
+        #d = a[0]*a[1]*a[2]*a[3]
+        #self.t += d
+        #print(d)
+        #print(self.t)
         setattr(self, lyr_name, out)
 
     def maxpool(self, prev_lyr, lyr_name, stream_name='d'):
@@ -177,7 +177,7 @@ class NnModel(object):
         # self.conv2d_tanh(self.s_conv4_2, 23, 'conv4_3', stream_name='s')
         # self.conv2d_tanh(self.s_conv4_3, 25, 'conv4_4', stream_name='s')
         self.attention_layer(self.d_conv4_2, self.s_conv4_2, 'd_conv4_2', 's_conv4_2')
-        self.avgpool(self.d_conv4_2, 'pool4')
+        self.avgpool(self.atten_conv4_2, 'pool4')
         #self.avgpool(self.s_conv4_2, 'pool4', stream_name='s')
         # self.dropout_layer(self.d_pool4)
         #

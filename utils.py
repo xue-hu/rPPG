@@ -204,7 +204,6 @@ def cal_meanStd_label(label_paths, data_len=8):
         mean = np.mean(file_label)
         std = np.std(file_label)
         sgn_li.append((mean, std))
-    file.close()
     return cond, sgn_li
 
 
