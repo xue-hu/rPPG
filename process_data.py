@@ -339,7 +339,7 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
                         (frame, diff, label, gt) = next(iterator)
                         sample_feat.append((frame, diff, label, gt))
                         # sample_lb.append(label)
-                    # sample_feat.append((frame, diff, label, gt))
+                        # sample_feat.append((frame, diff, gt))
                 except StopIteration:
                     pass
             random.shuffle(sample_feat)
@@ -362,32 +362,6 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
                 label_batch = []
                 gt_batch = []
                 sample_li = []
-            # try:
-            #     while True:
-            #         while len(sample_li) < batch_size:
-            #             (frame, diff, label, gt) = next(iterator)
-            #             sample_li.append((frame, diff, label, gt))
-            #             # if label == [0, 0, 1]:
-            #             #     c3_samples.append((frame, diff, val, gt))
-            #             # elif label == [0, 1, 0]:
-            #             #     c2_samples.append((frame, diff, val, gt))
-            #             # else:
-            #             #     c1_samples.append((frame, diff, val, gt))
-            #         random.shuffle(sample_li)
-            #         for (frame, diff, label, gt) in sample_li:
-            #             frame_batch.append(frame)
-            #             diff_batch.append(diff)
-            #             label_batch.append(label)
-            #             gt_batch.append(gt)
-            #         yield frame_batch, diff_batch, label_batch, gt_batch
-            #         # print('done one batch.')
-            #         frame_batch = []
-            #         diff_batch = []
-            #         label_batch = []
-            #         gt_batch = []
-            #         sample_li = []
-            # except StopIteration:
-            #     continue
     else:
         for (video_path, label_path, gt_path) in zip(video_paths, label_paths, gt_paths):
             iterator = get_sample(video_path, label_path, gt_path, width=width, height=height, mode=mode)
