@@ -113,143 +113,140 @@ class VideoAnalysis(object):
         # summary_ppg_accuracy = tf.summary.scalar('ppg_accuracy', self.ppg_accuracy)
         summary_hr_accuracy = tf.summary.scalar('hr_accuracy', self.hr_accuracy)
         summary_grad = tf.summary.merge([tf.summary.histogram("%s-grad" % g[1].name, g[0]) for g in self.grads])
-        te_vd_paths += te_vd_path
-        te_lb_paths += te_lb_path
-
-    summary_train = tf.summary.merge([summary_loss, summary_grad])  # , summary_ppg_accuracy])
-    summary_test = tf.summary.merge([summary_loss, summary_hr_accuracy])  # , summary_ppg_accuracy])
-    return summary_train, summary_test
+        summary_train = tf.summary.merge([summary_loss, summary_grad])  # , summary_ppg_accuracy])
+        summary_test = tf.summary.merge([summary_loss, summary_hr_accuracy])  # , summary_ppg_accuracy])
+        return summary_train, summary_test
 
 
-def build_graph(self):
-    self.loading_model()
-    self.inference()
-    self.loss()
-    self.evaluation()
-    self.optimizer()
+    def build_graph(self):
+        self.loading_model()
+        self.inference()
+        self.loss()
+        self.evaluation()
+        self.optimizer()
 
 
-def train_one_epoch(self, sess, writer, saver, summary_op, epoch, step):
-    total_loss = 0
-    n_batch = 0
-    start_time = time.time()
-    train_gen = self.get_data(self.train_video_paths, self.train_label_paths, self.train_gt_paths, np.arange(1, 50))
-    try:
-        while True:
-            print("epoch " + str(epoch + 1) + "-" + str(n_batch + 1))
-            (frames, diffs, labels, gts) = next(train_gen)
-            ##########testing the generator##############
-            # for frame, diff, label in zip(frames, diffs, labels):
-            #     cv2.imshow('face', frame)
-            #     cv2.imshow('diff', diff)
-            #     print(label)
-            #     cv2.waitKey(0)
-            ############################################
-            loss, _, logits, labels, __, summary = sess.run([self.loss, self.grads,
-                                                             self.logits,
-                                                             self.labels, self.opt,
-                                                             summary_op],
-                                                            feed_dict={self.input_img: frames,
-                                                                       self.input_diff: diffs,
-                                                                       self.labels: labels,
-                                                                       self.keep_prob: 0.9})
-            total_loss += loss
-            print('label:')
-            print(labels[:3])
-            if N_CLASSES == 1:
-                print('pred:')
-                print(logits[:3])
-            else:
-                print('pred:')
-                print(pred[:3])
-            n_batch += 1
-            writer.add_summary(summary, global_step=step)
-            step += 1
-            print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
-            if step % self.skip_step == 0:
-                saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
-    except StopIteration:
-        pass
-    print('Average loss at epoch {0}: {1}'.format(epoch, total_loss / n_batch))
-    print('Took:{0} seconds'.format(time.time() - start_time))
-    return step
-
-
-def eval_once(self, sess, writer, summary_op, epoch, step):
-    print("begin to evaluate.....")
-    total_accuracy = 0
-    n_pass = 0
-    thd = math.ceil(self.duration * FRAME_RATE / self.batch_size) + 1
-    for test_video_path, test_label_path, test_gt_path in zip(self.test_video_paths,
-                                                              self.test_label_paths, self.test_gt_paths):
-        test_gen = self.get_data([test_video_path], [test_label_path], [test_gt_path], [1, 2], mode='test')
-        n_test = 0
-        ppgs = []
+    def train_one_epoch(self, sess, writer, saver, summary_op, epoch, step):
+        total_loss = 0
+        n_batch = 0
+        start_time = time.time()
+        train_gen = self.get_data(self.train_video_paths, self.train_label_paths, self.train_gt_paths, np.arange(1, 50))
         try:
             while True:
-                frames, diffs, labels, gts = next(test_gen)
-                logits = sess.run([self.logits], feed_dict={self.input_img: frames,
-                                                            self.input_diff: diffs,
-                                                            self.labels: labels,
-                                                            self.gts: gts,
-                                                            self.keep_prob: 1})
-
-                if MODEL == 'regression':
-                    pred = logits[0].tolist()
+                print("epoch " + str(epoch + 1) + "-" + str(n_batch + 1))
+                (frames, diffs, labels, gts) = next(train_gen)
+                ##########testing the generator##############
+                # for frame, diff, label in zip(frames, diffs, labels):
+                #     cv2.imshow('face', frame)
+                #     cv2.imshow('diff', diff)
+                #     print(label)
+                #     cv2.waitKey(0)
+                ############################################
+                loss, _, logits, labels, __, summary = sess.run([self.loss, self.grads,
+                                                                 self.logits,
+                                                                 self.labels, self.opt,
+                                                                 summary_op],
+                                                                feed_dict={self.input_img: frames,
+                                                                           self.input_diff: diffs,
+                                                                           self.labels: labels,
+                                                                           self.keep_prob: 0.9})
+                total_loss += loss
+                print('label:')
+                print(labels[:3])
+                if N_CLASSES == 1:
+                    print('pred:')
+                    print(logits[:3])
                 else:
+                    print('pred:')
                     print(pred[:3])
-                    pred = pred.tolist()
-                    pred = np.argmax(pred, axis=1)
-                    print(pred[:3])
-                    pred[pred == 0] = -1
-                    pred[pred == 1] = -0.2
-                    pred[pred == 2] = 0.2
-                    pred[pred == 3] = 1
-                    pred = pred.tolist()
-                    print(pred[:3])
-                ppgs += pred
-                n_test += 1
-                n_pass += 1
-                print('total pred len:' + str(len(pred)))
-                print('total ppg len:' + str(len(ppgs)))
-                if n_test >= thd:
-                    print('cvt ppg >>>>>>>>>>>>')
-                    hr = process_data.get_hr(ppgs, self.batch_size, self.duration, fs=FRAME_RATE)
-                    accuracy, summary = sess.run([self.hr_accuracy, summary_op], feed_dict={
-                        self.input_img: frames,
-                        self.input_diff: diffs,
-                        self.labels: labels,
-                        self.hrs: hr,
-                        self.gts: gts,
-                        self.keep_prob: 1})
-                    print('hr:' + str(hr))
-                    print('gt:' + str(gts))
-                    total_accuracy += accuracy
-                    writer.add_summary(summary, global_step=step)
-                    step += 1
+                n_batch += 1
+                writer.add_summary(summary, global_step=step)
+                step += 1
+                print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
+                if step % self.skip_step == 0:
+                    saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
         except StopIteration:
             pass
-    print('Accuracy at epoch {0}: {1}'.format(epoch, total_accuracy / (n_pass - thd - 1)))
+        print('Average loss at epoch {0}: {1}'.format(epoch, total_loss / n_batch))
+        print('Took:{0} seconds'.format(time.time() - start_time))
+        return step
 
 
-def train(self, n_epoch):
-    print("begin to train.....")
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        print("initialization completed.")
-        writer = tf.summary.FileWriter('./graphs/', sess.graph)
-        print("computational graph saved.")
-        saver = tf.train.Saver()
-        summary_loss, summary_accuracy = self.create_summary()
-        step = self.gstep.eval()
-        ckpt = tf.train.get_checkpoint_state(os.path.dirname('./checkpoint_dict/checkpoint'))
-        if ckpt and ckpt.model_checkpoint_path:
-            saver.restore(sess, ckpt.model_checkpoint_path)
-            print('loading stored params...........')
-        for epoch in range(n_epoch):
-            step = self.train_one_epoch(sess, writer, saver, summary_loss, epoch, step)
-            self.eval_once(sess, writer, summary_accuracy, epoch, step)
-        writer.close()
+    def eval_once(self, sess, writer, summary_op, epoch, step):
+        print("begin to evaluate.....")
+        total_accuracy = 0
+        n_pass = 0
+        thd = math.ceil(self.duration * FRAME_RATE / self.batch_size) + 1
+        for test_video_path, test_label_path, test_gt_path in zip(self.test_video_paths,
+                                                                  self.test_label_paths, self.test_gt_paths):
+            test_gen = self.get_data([test_video_path], [test_label_path], [test_gt_path], [1, 2], mode='test')
+            n_test = 0
+            ppgs = []
+            try:
+                while True:
+                    frames, diffs, labels, gts = next(test_gen)
+                    logits = sess.run([self.logits], feed_dict={self.input_img: frames,
+                                                                self.input_diff: diffs,
+                                                                self.labels: labels,
+                                                                self.gts: gts,
+                                                                self.keep_prob: 1})
+
+                    if MODEL == 'regression':
+                        pred = logits[0].tolist()
+                    else:
+                        print(pred[:3])
+                        pred = pred.tolist()
+                        pred = np.argmax(pred, axis=1)
+                        print(pred[:3])
+                        pred[pred == 0] = -1
+                        pred[pred == 1] = -0.2
+                        pred[pred == 2] = 0.2
+                        pred[pred == 3] = 1
+                        pred = pred.tolist()
+                        print(pred[:3])
+                    ppgs += pred
+                    n_test += 1
+                    n_pass += 1
+                    print('total pred len:' + str(len(pred)))
+                    print('total ppg len:' + str(len(ppgs)))
+                    if n_test >= thd:
+                        print('cvt ppg >>>>>>>>>>>>')
+                        hr = process_data.get_hr(ppgs, self.batch_size, self.duration, fs=FRAME_RATE)
+                        accuracy, summary = sess.run([self.hr_accuracy, summary_op], feed_dict={
+                            self.input_img: frames,
+                            self.input_diff: diffs,
+                            self.labels: labels,
+                            self.hrs: hr,
+                            self.gts: gts,
+                            self.keep_prob: 1})
+                        print('hr:' + str(hr))
+                        print('gt:' + str(gts))
+                        total_accuracy += accuracy
+                        writer.add_summary(summary, global_step=step)
+                        step += 1
+            except StopIteration:
+                pass
+        print('Accuracy at epoch {0}: {1}'.format(epoch, total_accuracy / (n_pass - thd - 1)))
+
+
+    def train(self, n_epoch):
+        print("begin to train.....")
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            print("initialization completed.")
+            writer = tf.summary.FileWriter('./graphs/', sess.graph)
+            print("computational graph saved.")
+            saver = tf.train.Saver()
+            summary_loss, summary_accuracy = self.create_summary()
+            step = self.gstep.eval()
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname('./checkpoint_dict/checkpoint'))
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
+                print('loading stored params...........')
+            for epoch in range(n_epoch):
+                step = self.train_one_epoch(sess, writer, saver, summary_loss, epoch, step)
+                self.eval_once(sess, writer, summary_accuracy, epoch, step)
+            writer.close()
 
 
 if __name__ == '__main__':
