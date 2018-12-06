@@ -11,9 +11,12 @@ import cv2
 # VGG-19 parameters file
 MODEL = 'regression'
 N_CLASSES = 1
-VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat'
-VGG_FILENAME = 'imagenet-vgg-verydeep-19.mat'
-EXPECTED_BYTES = 534904783
+# VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat'
+# VGG_FILENAME = 'imagenet-vgg-verydeep-19.mat'
+# EXPECTED_BYTES = 534904783
+VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/vgg-face.mat'
+VGG_FILENAME = 'vgg-face.mat'
+EXPECTED_BYTES = 1086058494
 
 
 class NnModel(object):
@@ -32,7 +35,11 @@ class NnModel(object):
         i_dim = int(w.shape[-2]) if (lyr_idx == 0) else int(w.shape[-2] / 2)
         w = w[:, :, :i_dim, :o_dim]
         b = b[:o_dim]
-        assert lyr_name == self.vgg[0][lyr_idx][0][0][0][0]
+        if VGG_FILENAME == 'vgg-face.mat':
+            name = self.vgg[0][lyr_idx][0][0][1][0]
+        else:
+            name = self.vgg[0][lyr_idx][0][0][0][0]
+        assert lyr_name == name
         return w, b.reshape(b.size)
         #####why not b???? ValueError: Dimensions must be equal, but are 492 and 64 for 'add' (op: 'Add') with input shapes: [1,492,492,64], [64,1].
 

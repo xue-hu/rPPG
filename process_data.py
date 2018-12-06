@@ -389,26 +389,18 @@ def cvt_class(m):
     pos = 0
     neg = 0
     zero = 0
-    for _, li in m.items():
+    for key, li in m.items():
         sgns = []
         rand = []
         hr_label = []
+        print(key+':')
         for val, hr in li:
             hr_label.append(hr)
             if val > 1:
                 val = 1
             if val < -1:
                 val = -1
-            # all.append(val)
-            if val > 0.2:
-                val = 1
-            elif val < -0.2:
-                val = -1
-            else:
-                val = 0
             all.append(val)
-            # if val >=0:
-            #     all.append(val)
             sgns.append(val)
             if val > 0:
                 pos += 1
@@ -457,7 +449,7 @@ def cvt_class(m):
     plt.ylabel('occurance')
     plt.show()
 
-# if __name__ == '__main__':
+#if __name__ == '__main__':
 ##########batched labeled-samples######################
 # train_v_paths, train_l_paths = utils.create_file_paths([2,3])
 # train_gen = get_batch(train_v_paths, train_l_paths, [1, 2], 500)
@@ -506,10 +498,10 @@ def cvt_class(m):
 # labels_paths = utils.create_file_paths([2], sensor_sgn=1)
 ############local:read in ground truth##########################################
 ############local:read in ppg##########################################
-# with open('Pleth.pickle', 'rb') as f:
-#     m = pickle.load(f)
-# f.close()
-# cvt_class(m)
+    # with open('Pleth.pickle', 'rb') as f:
+    #     m = pickle.load(f)
+    # f.close()
+    # cvt_class(m)
 
 
 ###########################################################################
