@@ -60,18 +60,26 @@ class NnModel(object):
         setattr(self, (stream_name + '_' + lyr_name), out)
 
     def conv2d_tanh(self, pre_lyr, lyr_idx, out_dims, lyr_name, stream_name='d'):
-        w_init, b_init = self.__vgg_weights(lyr_idx, lyr_name)
-        w_init = tf.convert_to_tensor(w_init, dtype=tf.float32)
-        b_init = tf.convert_to_tensor(b_init, dtype=tf.float32)
+        #w_init, b_init = self.__vgg_weights(lyr_idx, lyr_name)
+        #w_init = tf.convert_to_tensor(w_init, dtype=tf.float32)
+        #b_init = tf.convert_to_tensor(b_init, dtype=tf.float32)
+        if lyr_idx == 0:
+            batch_size, height, width, depth = pre_lyr.shape
+        else:
+            batch_size, height, width, depth = pre_lyr.shape.as_list()
         with tf.variable_scope((stream_name+'_'+lyr_name), reuse=tf.AUTO_REUSE) as scope:
         #    w = tf.get_variable(name="weight", dtype=tf.float32, initializer=w_init)
          #   b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init)
-            w = tf.get_variable("weight", dtype=tf.float32, shape=w_init.shape, initializer=tf.random_normal_initializer(stddev=0.5))
-            b = tf.get_variable("bias", dtype=tf.float32, shape=b_init.shape,initializer=tf.constant_initializer(0.0))
+         #    w = tf.get_variable("weight", dtype=tf.float32, shape=w_init.shape, initializer=tf.random_normal_initializer(stddev=0.5))
+         #    b = tf.get_variable("bias", dtype=tf.float32, shape=b_init.shape,initializer=tf.constant_initializer(0.0))
+            w = tf.get_variable("weight", dtype=tf.float32, shape=[3, 3, depth, out_dims],
+                                initializer=tf.random_normal_initializer(stddev=0.5))
+            b = tf.get_variable("bias", dtype=tf.float32, shape=[out_dims,], initializer=tf.constant_initializer(0.0))
             conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
             out = tf.nn.tanh((conv + b), name=scope.name)
         print(lyr_name)
         print(w.shape)
+        print(b.shape)
         print(out.shape)
         #a = w.shape.as_list()
         #d = a[0] * a[1] * a[2] * a[3]
@@ -146,10 +154,10 @@ class NnModel(object):
         self.dropout_layer(self.d_pool1)
         #self.dropout_layer(self.s_pool1)
 
-        self.conv2d_tanh(self.d_pool1, 5, 64, 'conv2_1')
-        self.conv2d_tanh(self.d_conv2_1, 7, 64, 'conv2_2')
-        self.conv2d_tanh(self.s_pool1, 5, 64, 'conv2_1', stream_name='s')
-        self.conv2d_tanh(self.s_conv2_1, 7, 64, 'conv2_2', stream_name='s')
+        self.conv2d_tanh(self.d_pool1, 5, 32, 'conv2_1')
+        self.conv2d_tanh(self.d_conv2_1, 7, 32, 'conv2_2')
+        self.conv2d_tanh(self.s_pool1, 5, 32, 'conv2_1', stream_name='s')
+        self.conv2d_tanh(self.s_conv2_1, 7, 32, 'conv2_2', stream_name='s')
         self.attention_layer(self.d_conv2_2, self.s_conv2_2, 'd_conv2_2', 's_conv2_2')
         self.avgpool(self.atten_conv2_2, 'pool2')
         self.avgpool(self.s_conv2_2, 'pool2', stream_name='s')
@@ -257,4 +265,4 @@ if __name__ == '__main__':
     diff = np.expand_dims(diff, 0)
     model = NnModel(frame, diff, 1)
     model.two_stream_vgg_load()
-    print(model.t)
+    #print(model.t)
