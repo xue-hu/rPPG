@@ -190,16 +190,12 @@ def cal_meanStd_label(label_paths, data_len=8):
         labels = cvt_sensorSgn(label_path, skip_step)
         for idx in range(len(labels) - 1):
             val = float(labels[idx + 1] - labels[idx])
-            # if val > 1:
-            #     val = 1
-            # if val < -1:
-            #     val = -1
             val = val - p_mean
             val = val / p_dev
-            if val > 1:
-                val = 1
-            if val < -1:
-                val = -1
+            if val > 3:
+                val = 3
+            if val < -3:
+                val = -3
             file_label.append(val)
         mean = np.mean(file_label)
         std = np.std(file_label)
@@ -207,13 +203,14 @@ def cal_meanStd_label(label_paths, data_len=8):
     return cond, sgn_li
 
 
-def rescale_label(val, mean, std, model='classification'):
+def rescale_label(val, label_path, model='classification'):
+    mean, std = get_meanstd(label_path, mode='label')
     val = val - mean
     val = val / std
-    if val > 1:
-        val = 1
-    if val < -1:
-        val = -1
+    if val > 3:
+        val = 3
+    if val < -3:
+        val = -3
 #    if model == 'classification':
 #        if val > 0.4:
 #            val = [0, 0, 0, 1]
@@ -236,10 +233,10 @@ def rescale_label(val, mean, std, model='classification'):
 
 
 def rescale_frame(img, mean=0, dev=1.0):
-#    mean = mean.reshape((1, 1, 3))
-#    dev = dev.reshape((1, 1, 3))
-#    img = img - mean
-#    img = np.true_divide(img, dev)
+ #   mean = mean.reshape((1, 1, 3))
+ #   dev = dev.reshape((1, 1, 3))
+ #   img = img - mean
+ #   img = np.true_divide(img, dev)
     return img
 
 

@@ -220,8 +220,8 @@ def nor_diff_face(video_path, width=112, height=112):
                 continue
             pre_frame = cv2.imread(pre_path).astype(np.float32)
             next_frame = cv2.imread(next_path).astype(np.float32)
-            # pre_frame = cv2.resize(pre_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
-            # next_frame = cv2.resize(next_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+            #pre_frame = cv2.resize(pre_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+            #next_frame = cv2.resize(next_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
             diff = np.subtract(next_frame, pre_frame)
             mean_fr = np.add(next_frame / 2.0, pre_frame / 2.0)
             re = np.true_divide(diff, mean_fr, dtype=np.float32)
@@ -263,8 +263,8 @@ def nor_diff_clip(video_path, clip=1, width=112, height=112):
             continue
         pre_frame = cv2.imread(pre_path).astype(np.float32)
         next_frame = cv2.imread(next_path).astype(np.float32)
-        # pre_frame = cv2.resize(pre_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
-        # next_frame = cv2.resize(next_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+     #   pre_frame = cv2.resize(pre_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+      #  next_frame = cv2.resize(next_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
         diff = np.subtract(next_frame, pre_frame)
         mean_fr = np.add(next_frame / 2.0, pre_frame / 2.0)
         re = np.true_divide(diff, mean_fr, dtype=np.float32)
@@ -289,7 +289,7 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
         diff_iterator = nor_diff_clip(video_path, clip=clip, width=width, height=height)
         skip_step = PLE_SAMPLE_RATE / FRAME_RATE
         labels = utils.cvt_sensorSgn(label_path, skip_step)
-        mean, std = utils.get_meanstd(label_path, mode='label')
+    #    mean, std = utils.get_meanstd(label_path, mode='label')
         gt_skip_step = ECG_SAMPLE_RATE / FRAME_RATE
         gts = utils.cvt_sensorSgn(gt_path, gt_skip_step)
         start_pos = (clip - 1) * CLIP_SIZE
@@ -300,13 +300,13 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
                 continue
             gt = float(gts[idx])
             label = float(labels[idx + 1] - labels[idx])
-            val = utils.rescale_label(label, mean, std, 'regression')
+            val = utils.rescale_label(label, label_path, 'regression')
             yield (frame, diff, val, gt)
     else:
         diff_iterator = nor_diff_face(video_path, width=width, height=height)
         skip_step = PLE_SAMPLE_RATE / FRAME_RATE
         labels = utils.cvt_sensorSgn(label_path, skip_step)
-        mean, std = utils.get_meanstd(label_path, mode='label')
+       # mean, std = utils.get_meanstd(label_path, mode='label')
         gt_skip_step = ECG_SAMPLE_RATE / FRAME_RATE
         gts = utils.cvt_sensorSgn(gt_path, gt_skip_step)
         for idx in range(N_FRAME - 1):
@@ -315,7 +315,7 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
                 continue
             gt = float(gts[idx])
             label = float(labels[idx + 1] - labels[idx])
-            val = utils.rescale_label(label, mean, std, MODEL)
+            val = utils.rescale_label(label, label_path, MODEL)
             yield (frame, diff, val, gt)
 
 

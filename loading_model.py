@@ -73,7 +73,8 @@ class NnModel(object):
          #    w = tf.get_variable("weight", dtype=tf.float32, shape=w_init.shape, initializer=tf.random_normal_initializer(stddev=0.5))
          #    b = tf.get_variable("bias", dtype=tf.float32, shape=b_init.shape,initializer=tf.constant_initializer(0.0))
             w = tf.get_variable("weight", dtype=tf.float32, shape=[3, 3, depth, out_dims],
-                                initializer=tf.random_normal_initializer(stddev=0.4))
+   initializer=tf.random_normal_initializer(stddev=0.5))
+ # initializer=tf.initializers.he_normal())
             b = tf.get_variable("bias", dtype=tf.float32, shape=[out_dims,], initializer=tf.constant_initializer(0.0))
             conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='SAME')
             out = tf.nn.tanh((conv + b), name=scope.name)
@@ -92,7 +93,7 @@ class NnModel(object):
         _, height, width, depth = pre_lyr.shape.as_list()
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
             w = tf.get_variable("weight", dtype=tf.float32, shape=[height, width, depth, out_dims],
-                                initializer=tf.random_normal_initializer(stddev=0.4))
+   initializer=tf.random_normal_initializer(stddev=0.5))
             b = tf.get_variable("bias", dtype=tf.float32, shape=[out_dims, ],
                                 initializer=tf.constant_initializer(0.0))
             z = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding='VALID') + b
@@ -173,21 +174,21 @@ class NnModel(object):
        # self.conv2d_tanh(self.s_conv3_3, 16, 'conv3_4', stream_name='s')
         self.attention_layer(self.d_conv3_2, self.s_conv3_2, 'd_conv3_2', 's_conv3_2')
         self.avgpool(self.atten_conv3_2, 'pool3')
-        #self.avgpool(self.s_conv3_2, 'pool3', stream_name='s')
+       # self.avgpool(self.s_conv3_2, 'pool3', stream_name='s')
         self.dropout_layer(self.d_pool3)
 
         #self.conv2d_tanh(self.d_pool3, 17, 64, 'conv4_1')
         #self.conv2d_tanh(self.d_conv4_1, 19, 64, 'conv4_2')
         # self.conv2d_tanh(self.d_conv4_2, 23, 'conv4_3')
         # self.conv2d_tanh(self.d_conv4_3, 25, 'conv4_4')
-       # self.conv2d_tanh(self.s_pool3, 17, 64, 'conv4_1', stream_name='s')
-       # self.conv2d_tanh(self.s_conv4_1, 19, 64, 'conv4_2', stream_name='s')
+        #self.conv2d_tanh(self.s_pool3, 17, 64, 'conv4_1', stream_name='s')
+        #self.conv2d_tanh(self.s_conv4_1, 19, 64, 'conv4_2', stream_name='s')
         # self.conv2d_tanh(self.s_conv4_2, 23, 'conv4_3', stream_name='s')
         # self.conv2d_tanh(self.s_conv4_3, 25, 'conv4_4', stream_name='s')
-       # self.attention_layer(self.d_conv4_2, self.s_conv4_2, 'd_conv4_2', 's_conv4_2')
-       # self.avgpool(self.atten_conv4_2, 'pool4')
+        #self.attention_layer(self.d_conv4_2, self.s_conv4_2, 'd_conv4_2', 's_conv4_2')
+        #self.avgpool(self.atten_conv4_2, 'pool4')
         #self.avgpool(self.s_conv4_2, 'pool4', stream_name='s')
-        # self.dropout_layer(self.d_pool4)
+        #self.dropout_layer(self.d_pool4)
         #
         #self.conv2d_tanh(self.d_pool4, 24, 64, 'conv5_1')
         #self.conv2d_tanh(self.d_conv5_1, 25, 64, 'conv5_2')
@@ -206,7 +207,7 @@ class NnModel(object):
         self.dropout_layer(self.fc6)
         self.fully_connected_layer(self.fc6, 128, 'fc7')
         if MODEL == 'regression':
-            self.fully_connected_layer(self.fc7, 1, 'output')
+            self.fully_connected_layer(self.fc7, 1, 'output', last_lyr=True)
         else:
             self.fully_connected_layer(self.fc7, N_CLASSES, 'output', last_lyr=True)
         print("done.")

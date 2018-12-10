@@ -41,7 +41,7 @@ class VideoAnalysis(object):
         self.height = img_height
         self.duration = 30
         self.lr = 0.001
-        self.batch_size = 32
+        self.batch_size = 16
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 10000
 
@@ -106,7 +106,7 @@ class VideoAnalysis(object):
         optimizer = tf.train.AdadeltaOptimizer(self.lr)
         #optimizer = tf.train.MomentumOptimizer(self.lr, 0.01)
         grads, variable_names = zip(*optimizer.compute_gradients(self.loss))
-        clip_grads,_ = tf.clip_by_global_norm(grads, 7)
+        clip_grads,_ = tf.clip_by_global_norm(grads, 30)
         self.grads = [(g, v) for g,v in zip(clip_grads, variable_names)]
         self.grads_norm = tf.global_norm([g[0] for g in self.grads])
         self.opt = optimizer.apply_gradients(self.grads, global_step=self.gstep)
@@ -264,7 +264,7 @@ if __name__ == '__main__':
     te_gt_paths = []
     #tr_vd_paths, tr_lb_paths = utils.create_file_paths(np.arange(1,3))
     #_, tr_gt_paths = utils.create_file_paths(np.arange(1,3), sensor_sgn=0)
-    for cond in ['lighting', 'movement']:
+    for cond in ['lighting']: #, 'movement']:
         if cond == 'lighting':
             n = [0, 1, 3]
         else:
