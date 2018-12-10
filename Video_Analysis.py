@@ -40,10 +40,10 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.duration = 30
-        self.lr = 0.01
+        self.lr = 0.001
         self.batch_size = 32
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
-        self.skip_step = 700
+        self.skip_step = 10000
 
     def get_data(self, video_paths, label_paths, gt_paths, clips, mode='train'):
         print("create generator....")
@@ -104,16 +104,21 @@ class VideoAnalysis(object):
     def optimizer(self):
         print("crteate optimizer.....")
         optimizer = tf.train.AdadeltaOptimizer(self.lr)
-        self.grads = optimizer.compute_gradients(self.loss)
+        #optimizer = tf.train.MomentumOptimizer(self.lr, 0.01)
+        grads, variable_names = zip(*optimizer.compute_gradients(self.loss))
+        clip_grads,_ = tf.clip_by_global_norm(grads, 7)
+        self.grads = [(g, v) for g,v in zip(clip_grads, variable_names)]
+        self.grads_norm = tf.global_norm([g[0] for g in self.grads])
         self.opt = optimizer.apply_gradients(self.grads, global_step=self.gstep)
 
     def create_summary(self):
         print("crteate summary.....")
         summary_loss = tf.summary.scalar('loss', self.loss)
+        summary_norm = tf.summary.scalar('grads_norm', self.grads_norm)
         # summary_ppg_accuracy = tf.summary.scalar('ppg_accuracy', self.ppg_accuracy)
         summary_hr_accuracy = tf.summary.scalar('hr_accuracy', self.hr_accuracy)
         summary_grad = tf.summary.merge([tf.summary.histogram("%s-grad" % g[1].name, g[0]) for g in self.grads])
-        summary_train = tf.summary.merge([summary_loss, summary_grad])  # , summary_ppg_accuracy])
+        summary_train = tf.summary.merge([summary_loss, summary_grad, summary_norm])  # , summary_ppg_accuracy])
         summary_test = tf.summary.merge([summary_loss, summary_hr_accuracy])  # , summary_ppg_accuracy])
         return summary_train, summary_test
 
@@ -130,7 +135,7 @@ class VideoAnalysis(object):
         total_loss = 0
         n_batch = 0
         start_time = time.time()
-        train_gen = self.get_data(self.train_video_paths, self.train_label_paths, self.train_gt_paths, np.arange(1, 50))
+        train_gen = self.get_data(self.train_video_paths, self.train_label_paths, self.train_gt_paths, np.arange(1, 121))
         try:
             while True:
                 print("epoch " + str(epoch + 1) + "-" + str(n_batch + 1))
@@ -257,16 +262,18 @@ if __name__ == '__main__':
     te_vd_paths = []
     te_lb_paths = []
     te_gt_paths = []
-    for cond in ['lighting']:  # ,'movement']:
+    #tr_vd_paths, tr_lb_paths = utils.create_file_paths(np.arange(1,3))
+    #_, tr_gt_paths = utils.create_file_paths(np.arange(1,3), sensor_sgn=0)
+    for cond in ['lighting', 'movement']:
         if cond == 'lighting':
-            n = 6
+            n = [0, 1, 3]
         else:
-            n = 4
-        for i in range(n):
-            tr_vd_path, tr_lb_path = utils.create_file_paths(np.delete(np.arange(1, 27), 2), cond=cond, cond_typ=i)
-            _, tr_gt_path = utils.create_file_paths(np.delete(np.arange(1, 27), 2), cond=cond, cond_typ=i, sensor_sgn=0)
-            te_vd_path, te_lb_path = utils.create_file_paths([3], cond=cond, cond_typ=i)
-            _, te_gt_path = utils.create_file_paths([3], cond=cond, cond_typ=i, sensor_sgn=0)
+            n = [0, 1, 2]
+        for i in n:
+            tr_vd_path, tr_lb_path = utils.create_file_paths(np.delete(np.arange(1, 27), 3), cond=cond, cond_typ=i)
+            _, tr_gt_path = utils.create_file_paths(np.delete(np.arange(1, 27), 3), cond=cond, cond_typ=i, sensor_sgn=0)
+            te_vd_path, te_lb_path = utils.create_file_paths([4], cond=cond, cond_typ=i)
+            _, te_gt_path = utils.create_file_paths([4], cond=cond, cond_typ=i, sensor_sgn=0)
             tr_vd_paths += tr_vd_path
             tr_lb_paths += tr_lb_path
             tr_gt_paths += tr_gt_path
@@ -279,4 +286,4 @@ if __name__ == '__main__':
     #  model = VideoAnalysis(TRAIN_VIDEO_PATHS, TRAIN_LABEL_PATHS, TRAIN_GT_PATHS, TEST_VIDEO_PATHS, TEST_LABEL_PATHS,
     #                       TEST_GT_PATHS, img_height=128, img_width=128)
     model.build_graph()
-    model.train(100)
+    model.train(20000)

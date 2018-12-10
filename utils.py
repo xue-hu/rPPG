@@ -236,10 +236,10 @@ def rescale_label(val, mean, std, model='classification'):
 
 
 def rescale_frame(img, mean=0, dev=1.0):
-    mean = mean.reshape((1, 1, 3))
-    dev = dev.reshape((1, 1, 3))
-    img = img - mean
-   # img = np.true_divide(img, dev)
+#    mean = mean.reshape((1, 1, 3))
+#    dev = dev.reshape((1, 1, 3))
+#    img = img - mean
+#    img = np.true_divide(img, dev)
     return img
 
 
@@ -250,8 +250,8 @@ def clip_dframe(re, mean=0, dev=1.0):
     re = np.true_divide(re, dev)
     re[np.where(re>3)] = 3
     re[np.where(re<-3)] = -3
-   # re = re * dev
-   # re += mean
+    re = re * dev
+    re += mean
     return re
 
 
