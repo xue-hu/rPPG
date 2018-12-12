@@ -40,10 +40,11 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.duration = 30
-        self.lr = 0.001
+        self.lr = 0.04
+        self.sign_loss_weight = 1.0
         self.batch_size = 16
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
-        self.skip_step = 10000
+        self.skip_step = 20000
 
     def get_data(self, video_paths, label_paths, gt_paths, clips, mode='train'):
         print("create generator....")
@@ -82,8 +83,10 @@ class VideoAnalysis(object):
             # self.entropy = tf.losses.softmax_cross_entropy(onehot_labels=self.labels, logits=self.logits)
             # self.loss = tf.reduce_mean(self.entropy, name='loss')
             ###########regression#####################################################################
-            self.loss = tf.losses.mean_squared_error(self.logits, self.labels)
-            # self.loss = tf.losses.absolute_difference(self.logits, self.labels)
+            #self.loss = tf.losses.mean_squared_error(self.logits, self.labels)
+            false_signs = tf.less( tf.multiply(self.logits, self.labels), tf.zeros_like(self.labels))
+            self.sign_loss = tf.reduce_mean(tf.cast(false_signs, tf.float32))
+            self.loss = tf.losses.huber_loss(self.logits, self.labels)# + self.sign_loss_weight*self.sign_loss
 
     def evaluation(self):
         print("create evaluation methods.....")
@@ -106,7 +109,7 @@ class VideoAnalysis(object):
         optimizer = tf.train.AdadeltaOptimizer(self.lr)
         #optimizer = tf.train.MomentumOptimizer(self.lr, 0.01)
         grads, variable_names = zip(*optimizer.compute_gradients(self.loss))
-        clip_grads,_ = tf.clip_by_global_norm(grads, 30)
+        clip_grads,_ = tf.clip_by_global_norm(grads, 20)
         self.grads = [(g, v) for g,v in zip(clip_grads, variable_names)]
         self.grads_norm = tf.global_norm([g[0] for g in self.grads])
         self.opt = optimizer.apply_gradients(self.grads, global_step=self.gstep)
@@ -114,12 +117,13 @@ class VideoAnalysis(object):
     def create_summary(self):
         print("crteate summary.....")
         summary_loss = tf.summary.scalar('loss', self.loss)
+        summary_sign_loss = tf.summary.scalar('sign_loss', self.sign_loss)
         summary_norm = tf.summary.scalar('grads_norm', self.grads_norm)
         # summary_ppg_accuracy = tf.summary.scalar('ppg_accuracy', self.ppg_accuracy)
         summary_hr_accuracy = tf.summary.scalar('hr_accuracy', self.hr_accuracy)
         summary_grad = tf.summary.merge([tf.summary.histogram("%s-grad" % g[1].name, g[0]) for g in self.grads])
-        summary_train = tf.summary.merge([summary_loss, summary_grad, summary_norm])  # , summary_ppg_accuracy])
-        summary_test = tf.summary.merge([summary_loss, summary_hr_accuracy])  # , summary_ppg_accuracy])
+        summary_train = tf.summary.merge([summary_loss, summary_sign_loss, summary_grad, summary_norm])  # , summary_ppg_accuracy])
+        summary_test = tf.summary.merge([summary_loss, summary_sign_loss, summary_hr_accuracy])  # , summary_ppg_accuracy])
         return summary_train, summary_test
 
 
