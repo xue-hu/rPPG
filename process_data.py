@@ -17,8 +17,6 @@ from imblearn.over_sampling import RandomOverSampler, SMOTE
 
 # import matplotlib.pyplot as plt
 
-
-MODEL = 'regression'
 ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
 FRAME_RATE = 30.0
@@ -35,39 +33,8 @@ def cvt_hr(labels, duration, fs, lowcut, highcut, order):
     N = len(labels)
     t = np.linspace(0, duration, N)
 
-    # pos = []
-    # neg = []
-    # for i in range(len(labels)):
-    #     val = labels[i]
-    #     if val > 0:
-    #         pos.append(val)
-    #     elif val < 0:
-    #         neg.append(val)
-    #     else:
-    #         pass
-    # print(str(len(neg)) + ' - ' + str(len(pos)))
-
-    # plt.figure(1)
-    # plt.plot(t, labels)
-    # plt.title("Unfiltered PPG data")
-    # plt.xlabel('Time[sec]')
-    # plt.ylabel('PPG data')
-    # plt.show()
-
     y = utils.butter_bandpass_filter(labels, lowcut, highcut, fs, order)
     # y = cheby2_bandpass_filter(labels, 20, lowcut, highcut, fs, order=4)
-    # y = labels
-    # plt.figure(2)
-    # plt.plot(t, labels, color ='crimson', label='data')
-    # plt.plot(t, y, 'g-', linewidth=2, label='filtered data')
-    # plt.xlabel('Time [sec]')
-    # plt.ylabel('PPG data')
-    # plt.title("Bandpass Filtered data for obtaining Heart Rate")
-    # plt.grid()
-    # plt.legend()
-    #
-    # plt.subplots_adjust(hspace=0.35)
-    # plt.show()
 
     # periodogram
     FFT2 = abs(scipy.fft(y, N))
@@ -80,29 +47,9 @@ def cvt_hr(labels, duration, fs, lowcut, highcut, order):
 
     # Plotting periodogram
     x1 = freqs2[d]
-    # print(x1)
-    y1 = max(f2)
-    # plt.figure(3)
-    # plt.subplot(2,1,1)
-    # plt.plot(freqs2, f2,color='darkmagenta')
-    # plt.ylabel("PSD")
-    # plt.title('Periodogram for Heart Rate detection')
-    # plt.grid()
-    # plt.subplot(2,1,2)
-    # plt.plot(freqs2,f2,color='turquoise')
-    # plt.xlim((0,10))
-    # plt.ylim((0,y1+20))
-    # plt.text(x1,y1,'*Peak corresponding to Maximum PSD')
-    # plt.xlabel('Frequency(Hz)')
-    # plt.ylabel('PSD')
-    # plt.grid()
-    # plt.show()
-
-    # print('Maximum PSD:' , max(f2))
-    # print("The frequency associated with maximum PSD is", freqs2[d], "Hz")
+    y1 = max(f2)     
 
     HeartRate = freqs2[d] * 60
-    # print('HR:'+str(HeartRate))
     return HeartRate
 
 
@@ -120,7 +67,7 @@ def test_hr(label_path, duration, fs, lowcut=0.7, highcut=2.5, order=6, data_len
                 pos = math.floor(offset + n * skip_step)
                 binFile.seek(pos * data_len)
                 sgn = binFile.read(data_len)
-                d_sgn = struct.unpack("d", sgn)[0]  # - 390.04378353
+                d_sgn = struct.unpack("d", sgn)[0]  
                 labels.append(d_sgn)
                 n += 1
             re = cvt_hr(labels, duration, fs, lowcut, highcut, order)
@@ -131,191 +78,181 @@ def test_hr(label_path, duration, fs, lowcut=0.7, highcut=2.5, order=6, data_len
     return hr
 
 
-def get_hr(labels, batch_size, duration, fs, lowcut=0.7, highcut=2.5, order=6):
+def get_hr(labels, batch_size, duration, fs, lowcut=0.75, highcut=4, order=6):
     N = int(fs * duration)
     hr = []
+    #labels = utils.butter_bandpass_filter(labels, lowcut, highcut, fs, order)
     for idx in range((-batch_size), 0, 1):
         start_pos = idx - N
         end_pos = idx
         print('ppg fraction:' + str(start_pos) + '--' + str(end_pos))
         ppg = labels[start_pos:end_pos]
-        # print(str(idx + batch_size) + '-' + len(ppg))
         hr.append(cvt_hr(ppg, duration, fs, lowcut, highcut, order))
     return hr
 
 
-def crop_resize_face(video_path, width=112, height=112):
-    capture = cv2.VideoCapture()
-    capture.release()
-    capture.open(video_path)
-    if not capture.isOpened():
-        return
-    else:
-        print("video opened. start to read in.....")
-    mean, dev = utils.get_meanstd(video_path)
-    # frame_width = int(capture.get(3))
-    frame_height = int(capture.get(4))
-    framerate = capture.get(5)
-    nframe = int(capture.get(7))
-
-    for idx in range(nframe - 1):
-        print("reading in frame " + str(idx))
-        rd, frame = capture.read()
-        if not rd:
-            return
-        faces = utils.detect_face(frame)
-        if len(faces) != 0:
-            for (x, y, w, h) in faces:
-                # Convert bounding box to two CvPoints
-                # pt1 = (int(x), int(0.9*y))
-                # pt2 = (int(x + w), int(y + 1.6*h))
-                # cv2.rectangle(frame, pt1, pt2, (255, 0, 0), 5, 8, 0)
-                y = max(int(0.95 * y), 0)
-                h = min(int(1.7 * h), (frame_height - y))
-                x = max(int(0.98 * x), 0)
-                w = min(int(1.2 * w), (frame_width - x))
-                frame = frame[y:y + h, x:x + w]
-                frame = utils.rescale_frame(frame, mean, dev)
-                frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
-                # cv2.imshow('frame', frame)
-                # cv2.waitKey(0)
-                # cv2.imwrite(('./'+str(idx)+'.jpg'),frame)
-                # frame = np.expand_dims(frame, 0)
-                yield frame
-    capture.release()
-
-
-def nor_diff_face(video_path, width=112, height=112):
-    ###########remote##########################################
-    # print(video_path)
-    # print(os.path.exists(video_path))
+def nor_diff_face(video_path, width=112, height=112, extra=False):
     path = video_path.split('/')
-    prob_id = path[4]
-    cond = path[5].split('_')[0]
-    ###########local###########################################
-    # prob_id = 'Proband02'
-    # cond = '101'
-    ###########################################################
-    for clip in range(1, int(N_CLIPS + 1)):
+    if extra:
+        if int(path[4])>9:
+            prob_id = 'Proband' + path[4]
+        else:
+            prob_id = 'Proband0' + path[4]
+        cond = '301' 
+        n_clips = 600
+    else:
+        prob_id = path[4]
+        cond = path[5].split('_')[0]
+        n_clips = 120
+    mean, dev = utils.get_meanstd(video_path)
+    re_mean, re_dev = utils.get_meanstd(video_path, mode='diff')
+    #landmarks = utils.get_face_landmarks(video_path)        
+    for clip in range(1, int(n_clips + 1)):
         scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
         start_pos = (clip - 1) * CLIP_SIZE
-        end_pos = clip * CLIP_SIZE
-        mean, dev = utils.get_meanstd(video_path)
-        re_mean, re_dev = utils.get_meanstd(video_path, mode='diff')
-        print(cond + '-' + prob_id + '-clip' + str(clip))
+        end_pos = clip * CLIP_SIZE       
+        #print(cond + '-' + prob_id + '-clip' + str(clip))
         for idx in range(start_pos, end_pos):
             pre_path = scr_path + str(idx) + '.jpg'
-            if idx == end_pos - 1 and clip != N_CLIPS:
-                print('end of clip-' + str(clip))
-                print('reading in ' + str((clip) * CLIP_SIZE) + '.jpg')
+            if idx == end_pos - 1 and clip != n_clips:
                 scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip + 1) + '/'
                 next_path = scr_path + str(clip * CLIP_SIZE) + '.jpg'
-            elif idx == end_pos - 1 and clip == N_CLIPS:
-                print('done ' + cond + '-' + prob_id)
+            elif idx == end_pos - 1 and clip == n_clips:
                 raise StopIteration
             else:
                 next_path = scr_path + str(idx + 1) + '.jpg'
             if not (os.path.exists(next_path) and os.path.exists(pre_path)):
                 yield [], []
                 continue
-            pre_frame = cv2.imread(pre_path).astype(np.float32)
-            next_frame = cv2.imread(next_path).astype(np.float32)
-            #pre_frame = cv2.resize(pre_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
-            #next_frame = cv2.resize(next_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
-            diff = np.subtract(next_frame, pre_frame)
-            mean_fr = np.add(next_frame / 2.0, pre_frame / 2.0)
+#             pre_nose = landmarks[str(idx)]
+#             next_nose = landmarks[str(idx+1)]
+#             if len(pre_nose) == 0 or len(next_nose)==0:
+#                 yield [], []
+#                 continue  
+            pre_frame = cv2.imread(pre_path)#.astype(np.float32)
+            next_frame = cv2.imread(next_path)#.astype(np.float32)
+            #pr_pre_frame, pr_next_frame = utils.face_align(pre_frame, next_frame, cond+'-'+prob_id,idx, pre_nose, next_nose) 
+            pr_pre_frame = cv2.resize(pre_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+            pr_next_frame = cv2.resize(next_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+            diff = np.subtract(pr_next_frame, pr_pre_frame)
+            mean_fr = np.add(pr_next_frame , pr_pre_frame )
             re = np.true_divide(diff, mean_fr, dtype=np.float32)
             re[re == np.inf] = 0
             re = np.nan_to_num(re)
-            ########### wait to implement ########################################################
-            re = utils.clip_dframe(re, re_mean, re_dev)
-            pre_frame = utils.rescale_frame(pre_frame, mean, dev)
-            ########################################################################################
-            # cv2.imshow("diff", diff)
-            # cv2.imshow("mean", mean.astype(np.uint8))
-            # cv2.imshow("re", re)
-            # cv2.waitKey(0)
-            yield pre_frame, re
+            re = utils.clip_dframe(re, cond+'-'+prob_id,idx,re_mean, re_dev)
+            pr_pre_frame = utils.norm_frame(pr_pre_frame, mean, dev)         
+            yield pr_pre_frame, re
 
 
-def nor_diff_clip(video_path, clip=1, width=112, height=112):
+def nor_diff_clip(video_path, clip=1, width=112, height=112,extra=False):
     ###########remote##########################################
-    # print(video_path)
-    # print(os.path.exists(video_path))
     path = video_path.split('/')
-    prob_id = path[4]
-    cond = path[5].split('_')[0]
-    ###########local###########################################
-    # prob_id = 'Proband02'
-    # cond = '101'
-    ###########################################################
+    if extra:
+        if int(path[4])>9:
+            prob_id = 'Proband' + path[4]
+        else:
+            prob_id = 'Proband0' + path[4]
+        cond = '301'
+        n_clips = 600
+    else:
+        prob_id = path[4]
+        cond = path[5].split('_')[0]
+        n_clips = 120
     scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
     start_pos = (clip - 1) * CLIP_SIZE
-    end_pos = clip * CLIP_SIZE - 1
+    end_pos = clip * CLIP_SIZE 
     mean, dev = utils.get_meanstd(video_path, mode='video')
     re_mean, re_dev = utils.get_meanstd(video_path, mode='diff')
-    print(cond + '-' + prob_id + '-clip' + str(clip))
-    for idx in range(start_pos, end_pos):
+    #landmarks = utils.get_face_landmarks(video_path)
+    #print(cond + '-' + prob_id + '-clip' + str(clip))
+    for idx in range(start_pos, end_pos):        
         pre_path = scr_path + str(idx) + '.jpg'
-        next_path = scr_path + str(idx + 1) + '.jpg'
+        if idx == end_pos - 1 and clip != n_clips:
+            scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip + 1) + '/'
+            next_path = scr_path + str(clip * CLIP_SIZE) + '.jpg'
+        elif idx == end_pos - 1 and clip == n_clips:
+            raise StopIteration
+        else:
+            next_path = scr_path + str(idx + 1) + '.jpg'            
         if not (os.path.exists(next_path) and os.path.exists(pre_path)):
             yield [], []
             continue
-        pre_frame = cv2.imread(pre_path).astype(np.float32)
-        next_frame = cv2.imread(next_path).astype(np.float32)
-     #   pre_frame = cv2.resize(pre_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
-      #  next_frame = cv2.resize(next_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
-        diff = np.subtract(next_frame, pre_frame)
-        mean_fr = np.add(next_frame / 2.0, pre_frame / 2.0)
-        re = np.true_divide(diff, mean_fr, dtype=np.float32)
+#         pre_nose = landmarks[str(idx)]
+#         next_nose = landmarks[str(idx+1)]
+#         if len(pre_nose) == 0 or len(next_nose)==0:
+#             yield [], []
+#             continue   
+        pre_frame = cv2.imread(pre_path)#.astype(np.float32)
+        next_frame = cv2.imread(next_path)#.astype(np.float32)  
+        #pr_pre_frame, pr_next_frame = utils.face_align(pre_frame,next_frame, cond+'-'+prob_id,idx, pre_nose, next_nose)  
+        pr_pre_frame = cv2.resize(pre_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+        pr_next_frame = cv2.resize(next_frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+        diff = np.subtract( pr_next_frame, pr_pre_frame )        
+        mean_fr = np.add( pr_next_frame  , pr_pre_frame  )        
+        re = np.true_divide(diff, mean_fr, dtype=np.float32)        
         re[re == np.inf] = 0
         re = np.nan_to_num(re)
-        ########### wait to implement ########################################################
-        re = utils.clip_dframe(re, re_mean, re_dev)
-        pre_frame = utils.rescale_frame(pre_frame, mean, dev)
-        ########################################################################################
-        # cv2.imshow("diff", diff)
-        # cv2.imshow("mean", mean.astype(np.uint8))
-        # cv2.imshow("re", re)
-        # cv2.waitKey(0)
-        yield pre_frame, re
+        re = utils.clip_dframe(re, cond+'-'+prob_id,idx,re_mean, re_dev)        
+        pr_pre_frame = utils.norm_frame(pr_pre_frame, mean, dev)
+        #print('frame idx: '+str(idx))
+        yield pr_pre_frame, re
 
 
 ######################################################################
 
 
-def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, mode='train'):
+def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, mode='train',extra=False):
     if mode == 'train':
-        diff_iterator = nor_diff_clip(video_path, clip=clip, width=width, height=height)
-        skip_step = PLE_SAMPLE_RATE / FRAME_RATE
-        labels = utils.cvt_sensorSgn(label_path, skip_step)
-    #    mean, std = utils.get_meanstd(label_path, mode='label')
+        diff_iterator = nor_diff_clip(video_path, clip=clip, width=width, height=height,extra=extra)
         gt_skip_step = ECG_SAMPLE_RATE / FRAME_RATE
-        gts = utils.cvt_sensorSgn(gt_path, gt_skip_step)
+        gts = utils.cvt_sensorSgn(gt_path, gt_skip_step, extra=extra)
+        
+        skip_step = PLE_SAMPLE_RATE / FRAME_RATE
+        labels = utils.cvt_sensorSgn(label_path, skip_step, extra=extra)
+        labels = utils.ppg_filt(labels,min(gts),max(gts))
+        
+        lag = -utils.get_delay(video_path)
+        ecg_idx, vd_idx = 0,0#utils.get_startPoint(video_path)
+        #print('### lag: '+str(lag))
         start_pos = (clip - 1) * CLIP_SIZE
-        end_pos = clip * CLIP_SIZE - 1
+        end_pos = clip * CLIP_SIZE         
         for idx in range(start_pos, end_pos):
             frame, diff = next(diff_iterator)
-            if len(frame) == 0:
+#             print('frame idx:'+str(lag + idx - vd_idx))
+#             print('label idx:'+str(idx+ lag + 1 - ecg_idx))
+            if len(frame) == 0 or len(diff) == 0 or (lag + idx - vd_idx) < 0 :
                 continue
-            gt = float(gts[idx])
-            label = float(labels[idx + 1] - labels[idx])
-            val = utils.rescale_label(label, label_path, 'regression')
-            yield (frame, diff, val, gt)
+            if (lag + idx - vd_idx)>= len(labels)- 1:
+                break                        
+            gt = float(gts[idx - ecg_idx])
+            label = float(labels[idx+ lag + 1 - ecg_idx] - labels[idx+lag - ecg_idx])           
+            val = utils.rescale_label(label, label_path)
+            #print('label idx: '+str(idx)+'+'+str(lag))
+            #print(str(labels[idx+ lag + 1])+' - '+str(labels[idx+lag]))
+            #print(str(val)+' - '+str(gt))      
+            yield (frame, diff, val, gt)            
     else:
-        diff_iterator = nor_diff_face(video_path, width=width, height=height)
-        skip_step = PLE_SAMPLE_RATE / FRAME_RATE
-        labels = utils.cvt_sensorSgn(label_path, skip_step)
-       # mean, std = utils.get_meanstd(label_path, mode='label')
+        diff_iterator = nor_diff_face(video_path, width=width, height=height,extra=extra)
+        
         gt_skip_step = ECG_SAMPLE_RATE / FRAME_RATE
-        gts = utils.cvt_sensorSgn(gt_path, gt_skip_step)
+        gts = utils.cvt_sensorSgn(gt_path, gt_skip_step, extra=extra)
+        
+        skip_step = PLE_SAMPLE_RATE / FRAME_RATE
+        labels = utils.cvt_sensorSgn(label_path, skip_step, extra=extra)
+        labels = utils.ppg_filt(labels,min(gts),max(gts))
+        
+        lag = utils.get_delay(video_path)
+        ecg_idx, vd_idx = 0,0#utils.get_startPoint(video_path)
+        #print('### lag: '+str(lag))
         for idx in range(N_FRAME - 1):
             frame, diff = next(diff_iterator)
-            if len(frame) == 0:
+            if len(frame) == 0 or len(diff) == 0 or (lag + idx - vd_idx) < 0:
                 continue
-            gt = float(gts[idx])
-            label = float(labels[idx + 1] - labels[idx])
-            val = utils.rescale_label(label, label_path, MODEL)
+            if (lag + idx - vd_idx)>= len(labels) - 1:
+                break
+            gt = float(gts[idx - ecg_idx])
+            label = float(labels[idx+ lag + 1 - ecg_idx] - labels[idx + lag - ecg_idx])
+            val = utils.rescale_label(label,label_path)
             yield (frame, diff, val, gt)
 
 
@@ -331,26 +268,28 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
         for clip in clips:
             random.shuffle(paths)
             sample_feat = []
-            # sample_lb = []
             for (video_path, label_path, gt_path) in paths:
-                iterator = get_sample(video_path, label_path, gt_path, clip=clip, width=width, height=height, mode=mode)
+                path = video_path.split('/') 
+                if len(path) > 6:
+                    extra = False
+                    if clip > 120:
+                        continue
+                else:
+                    extra = True
+                iterator = get_sample(video_path, label_path, gt_path, clip=clip, width=width, height=height, mode=mode,extra=extra)
                 try:
                     while True:
                         (frame, diff, label, gt) = next(iterator)
-                        sample_feat.append((frame, diff, label, gt))
-                        # sample_lb.append(label)
-                        # sample_feat.append((frame, diff, gt))
+                        sample_feat.append((frame, diff, label, gt))                       
                 except StopIteration:
                     pass
             random.shuffle(sample_feat)
-            # ros = RandomOverSampler(sampling_strategy='auto')
-            # ros = SMOTE()
-            # sample_feat, sample_lb = ros.fit_sample(sample_feat, sample_lb)
-            for frame, diff, label, gt in sample_feat:
-                if len(sample_li) < batch_size:
-                    sample_li.append((frame, diff, label, gt))
+            print('sample len: '+str(len(sample_feat))) 
+            for frame, diff, label, gt in sample_feat:                
+                sample_li.append((frame, diff, label, gt))
+                if len(sample_li) < batch_size :
                     continue
-                random.shuffle(sample_li)
+                #random.shuffle(sample_li)
                 for (frame, diff, label, gt) in sample_li:
                     frame_batch.append(frame)
                     diff_batch.append(diff)
@@ -364,7 +303,12 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
                 sample_li = []
     else:
         for (video_path, label_path, gt_path) in zip(video_paths, label_paths, gt_paths):
-            iterator = get_sample(video_path, label_path, gt_path, width=width, height=height, mode=mode)
+            path = video_path.split('/')    
+            if len(path) > 6:
+                extra = False
+            else:
+                extra = True
+            iterator = get_sample(video_path, label_path, gt_path, width=width, height=height, mode=mode,extra=extra)
             try:
                 while True:
                     while len(frame_batch) < batch_size:
@@ -450,32 +394,29 @@ def cvt_class(m):
     plt.show()
 
 #if __name__ == '__main__':
-##########batched labeled-samples######################
-# train_v_paths, train_l_paths = utils.create_file_paths([2,3])
-# train_gen = get_batch(train_v_paths, train_l_paths, [1, 2], 500)
-# test_v_paths, test_l_paths = utils.create_file_paths([3], sensor_sgn=0)
-# test_gen = get_batch(test_v_paths, test_l_paths, [1,2], 500, mode='test')
-
 #######################################################
-# train_gen = get_batch(VIDEO_PATHS, LABEL_PATHS, GT_PATHS, np.arange(1,121), 20)
-# test_gen = get_batch(VIDEO_PATHS, GT_PATHS, [1, 2], 500, mode='test')
-# idx = 0
-# print('<<<<<<<<<train gen>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-# try:
-#     while True:
-#         frames, diffs, labels, gts = next(train_gen)
-#         print('batch-'+str(idx))
-#         idx += 1
-#         for (frame, diff, label, gt) in zip(frames, diffs, labels, gts):
-#             # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
-#             # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
-#             # cv2.imshow('face', frame)
-#             # cv2.imshow('diff', diff)
-#             print(str(label)+' - '+str(gt))
-#             #cv2.waitKey(0)
-# except StopIteration:
-#     pass
+#     tr_vd_path, tr_lb_path = utils.create_file_paths([2])
+#     _, tr_gt_path = utils.create_file_paths([2], sensor_sgn=0)
+# #     tr_vd_path, tr_lb_path = utils.create_extra_file_paths([1])
+#     train_gen = get_batch(tr_vd_path, tr_lb_path,tr_gt_path, np.arange(1,5), 30, mode='train',extra=False)
+#     idx = 0
+#     print('<<<<<<<<<train gen>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+#     try:
+#         while True:
+#             frames, diffs, labels, gts = next(train_gen)
+#             print('batch-'+str(idx))
+#             idx += 1
+#             for (frame, diff, label, gt) in zip(frames, diffs, labels, gts):
+#                 # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
+#                 # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
+#                 # cv2.imshow('face', frame)
+#                 # cv2.imshow('diff', diff)
+#                 print(str(label)+' - '+str(gt))
+#                 pass
+#     except StopIteration:
+#         pass
 # print('<<<<<<<<<test gen>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+#test_gen = get_batch(VIDEO_PATHS, GT_PATHS, [1, 2], 500, mode='test')
 # idx = 0
 # try:
 #     while True:
@@ -493,10 +434,6 @@ def cvt_class(m):
 # except StopIteration:
 #     pass
 
-############cvt ppg to hr##########################################
-# gt_paths = utils.create_file_paths([2], sensor_sgn=0)
-# labels_paths = utils.create_file_paths([2], sensor_sgn=1)
-############local:read in ground truth##########################################
 ############local:read in ppg##########################################
     # with open('Pleth.pickle', 'rb') as f:
     #     m = pickle.load(f)
@@ -504,4 +441,3 @@ def cvt_class(m):
     # cvt_class(m)
 
 
-###########################################################################
