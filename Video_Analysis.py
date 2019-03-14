@@ -5,7 +5,7 @@ import os
 import time
 import tensorflow as tf
 import cv2
-import loading_model
+import cnn_model
 import process_data
 import utils
 import math
@@ -17,6 +17,7 @@ ECG_SAMPLE_RATE = 16.0
 PLE_SAMPLE_RATE = 256.0
 FRAME_RATE = 30.0
 N_CLASSES = 2
+MODEL = 'reg'  #'classi'
 
 
 class VideoAnalysis(object):
@@ -55,13 +56,15 @@ class VideoAnalysis(object):
             self.labels = tf.placeholder(dtype=tf.float32, name='ppg_diff', shape=[self.batch_size, ])
         with tf.name_scope('dropout'):
             self.keep_prob = tf.placeholder(dtype=tf.float32, name='dropout_prob', shape=[])
-        self.model = loading_model.NnModel(self.input_img, self.input_diff, self.keep_prob)
+            
+        self.model = cnn_model.CnnModel(self.input_img, self.input_diff, self.keep_prob)
         self.model.two_stream_vgg_load()
 
 
     def inference(self):
         self.reg_output = tf.reshape(self.model.reg_output, shape=[self.batch_size, ])
-        self.class_output = tf.reshape(self.model.class_output, shape=[self.batch_size, N_CLASSES])        
+        self.class_output = tf.reshape(self.model.class_output, shape=[self.batch_size, N_CLASSES]) 
+        self.pred_class = tf.cast(tf.argmax(tf.nn.softmax(self.class_output),axis=1),tf.int32)
 
     def loss(self):
         print("crteate loss-Function.....")
@@ -73,7 +76,11 @@ class VideoAnalysis(object):
             ###########regression##########################################################################
             self.reg_loss = tf.losses.mean_squared_error(self.reg_output, self.labels)
             ##############################################################################################
-            self.loss = self.reg_loss + 1.0 * self.class_loss          
+            if MODEL = 'reg':
+                self.loss = self.reg_loss 
+            else:
+                #self.loss = self.class_loss 
+                self.loss = self.reg_loss + 0.5 * self.class_loss 
             #self.loss = tf.losses.huber_loss(self.logits, self.labels)# + self.sign_loss_weight*self.sign_loss            
   
 
@@ -98,8 +105,12 @@ class VideoAnalysis(object):
             total_match = tf.cast(tf.size(indicator), tf.float32)
             self.hr_accuracy = tf.truediv(total_match, tf.cast(self.batch_size, tf.float32))          
         with tf.name_scope('sign_accuracy'):
-            false_signs = tf.greater( tf.multiply(self.reg_output, self.labels), tf.zeros_like(self.labels))
-            self.sign_accuracy = tf.reduce_mean(tf.cast(false_signs, tf.float32))        
+            if MODEL = 'reg':
+                right_signs = tf.greater( tf.multiply(self.reg_output, self.labels), tf.zeros_like(self.labels))
+            else:
+                label_signs = tf.cast(tf.greater(self.labels,0),tf.int32)
+                right_signs = tf.equal( label_signs, self.pred_class )
+            self.sign_accuracy = tf.reduce_mean(tf.cast(right_signs, tf.float32))        
            
 
     def create_summary(self):
@@ -132,8 +143,8 @@ class VideoAnalysis(object):
             while True:
                 print("epoch " + str(epoch + 1) + "-" + str(n_batch + 1))
                 (frames, diffs, labels, gts) = next(train_gen)
-                loss,_, logits, labels, __, summary = sess.run([self.loss, self.class_loss,
-                                                                 self.reg_output,
+                loss,_, logits, pred_clss, labels, __, summary = sess.run([self.loss, self.class_loss,
+                                                                 self.reg_output,                                                                         self.pred_class,
                                                                  self.labels, self.opt,
                                                                  summary_op],
                                                                 feed_dict={self.input_img: frames,
@@ -144,12 +155,12 @@ class VideoAnalysis(object):
                 print('label:')
                 print(labels[:2])
                 print('pred:')
-                print(logits[:2])   
+                print(logits[:2])
                 n_batch += 1
                 writer.add_summary(summary, global_step=step)
                 step += 1
                 print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
-                if n_batch%500 == 0:                   
+                if n_batch%1000 == 0:                   
                     atten_map, d_conv2_2 = sess.run([self.model.atten_conv1_2_mask, self.model.d_conv2_2],feed_dict={self.input_img: frames,
                                                       self.input_diff: diffs,
                                                       self.keep_prob: 1})
@@ -179,8 +190,8 @@ class VideoAnalysis(object):
             cond = path[5].split('_')[0]
             if not os.path.exists('./predict_results/'):
                 os.makedirs('./predict_results/')
-            fileObject = open('./predict_results/'+cond+'-'+prob_id+'-ppg('+str(epoch)+').txt', 'w')               
- 
+            fileObject = open('./predict_results/'+cond+'-'+prob_id+'-ppg('+str(epoch)+').txt', 'w')
+            fileObject.write('\t'*200+'\n') 
 
             test_gen = self.get_data([test_video_path], [test_label_path], [test_gt_path], [1, 2], batch_size=self.batch_size, mode='test')
             gt_accuracy = 0
@@ -194,18 +205,25 @@ class VideoAnalysis(object):
             try:
                 while True:
                     frames, diffs, labels, gts = next(test_gen)
-                    logits, labels = sess.run([self.reg_output, self.labels], feed_dict={self.input_img: frames,
+                    logits, pred_class, labels = sess.run([self.reg_output, self.pred_class, self.labels], feed_dict={self.input_img: frames,
                                                                 self.input_diff: diffs,
                                                                 self.labels: labels,
                                                                 self.gts: gts,
                                                                 self.keep_prob: 1})
 
                     print('label:')
-                    print(labels[:2])
-                    pred = logits.tolist()
-                    print('pred:')
-                    print(pred[:2])                    
-                    ppgs += pred
+                    print(labels[:2])                  
+                    if MODEL = 'reg':
+                        pred = logits.tolist()
+                        print('pred:')
+                        print(pred[:2])
+                        ppgs += pred
+                    else:
+                        pred = np.where(pred_class,0.1,-0.1)
+                        print('pred_class:')
+                        print(pred[:4]) 
+                        ppgs += list(pred)
+                    
                     ref_ppgs += labels.tolist()
                     n_test += 1                     
                     if n_test >= thd:
@@ -234,33 +252,29 @@ class VideoAnalysis(object):
                             hr_li.append(hr)
                             gt_li.append(gt)
                             ref_li.append(ref_hr)
-                            fileObject.write(str(round(i,2))+'      '+str(round(j,2))+'    :    '+str(int(hr))+'    '+ str(int(gt))+'    '+ str(int(ref_hr)))  
-                            fileObject.write('\n') 
+                            fileObject.write(str(round(i,2))+'      '+str(round(j,2))+'    :    '+str(int(hr))+'    '+ str(int(gt))+'    '+ str(int(ref_hr))+'\n')  
                         
                         writer.add_summary(summary, global_step=step)
                         step += 1  
-                    if n_test%50 == 0:                   
-                        atten_map = sess.run([self.model.atten_conv1_2_mask],feed_dict={self.input_img: frames,
-                                                          self.input_diff: diffs,
-                                                          self.keep_prob: 1})
-                        if not os.path.exists('./predict_results/'):
-                            os.makedirs('./predict_results/')
-                        atten_map = np.asarray(atten_map ,dtype=np.float32).reshape((self.batch_size,self.height, self.width, 1)) 
-                        atten_map = atten_map[0,:,:] * 255
-                        atten_map[atten_map > 255] = 255                    
-                        cv2.imwrite( ('./predict_results/test-'+str(epoch)+'-'+str(step)+'-' +cond+'-'+prob_id+ '.jpg'),atten_map)    
+#                     if n_test%50 == 0:                   
+#                         atten_map = sess.run([self.model.atten_conv1_2_mask],feed_dict={self.input_img: frames,
+#                                                           self.input_diff: diffs,
+#                                                           self.keep_prob: 1})
+#                         if not os.path.exists('./predict_results/'):
+#                             os.makedirs('./predict_results/')
+#                         atten_map = np.asarray(atten_map ,dtype=np.float32).reshape((self.batch_size,self.height, self.width, 1)) 
+#                         atten_map = atten_map[0,:,:] * 255
+#                         atten_map[atten_map > 255] = 255                    
+#                         cv2.imwrite( ('./predict_results/test-'+str(epoch)+'-'+str(step)+'-' +cond+'-'+prob_id+ '.jpg'),atten_map)    
             except StopIteration:
                 pass
             mae = (np.abs(np.asarray(hr_li) - np.asarray(gt_li))).mean(axis=None)
             ref_mae = (np.abs(np.asarray(hr_li) - np.asarray(ref_li))).mean(axis=None)
-            fileObject.write('gt_accuracy: '+str(gt_accuracy / (n_test-thd))) 
-            fileObject.write('\n')
-            fileObject.write('MAE: '+str(mae))  
-            fileObject.write('\n')
-            fileObject.write('ref_accuracy: '+str(ref_accuracy / (n_test-thd))) 
-            fileObject.write('\n')
-            fileObject.write('ref_MAE: '+str(ref_mae))  
-            fileObject.write('\n')
+            fileObject.seek(0)
+            fileObject.write( 'gt_accuracy: '+str(gt_accuracy / (n_test-thd))+'\n' ) 
+            fileObject.write('MAE: '+str(mae)+'\n')  
+            fileObject.write('ref_accuracy: '+str(ref_accuracy / (n_test-thd))+'\n') 
+            fileObject.write('ref_MAE: '+str(ref_mae)+'\n')  
             fileObject.close() 
             print('################Accuracy at epoch {0}: {1}'.format(epoch, gt_accuracy / ( n_test - thd) ))
 
@@ -298,7 +312,7 @@ if __name__ == '__main__':
     te_vd_paths = []
     te_lb_paths = []
     te_gt_paths = []
-    t_id = 6
+    t_id = 1
     for cond in ['lighting']:
         if cond == 'lighting':
             n = [0]
@@ -317,8 +331,8 @@ if __name__ == '__main__':
         if cond == 'lighting':
             n = [1]
         for i in n:
-            tr_vd_path, tr_lb_path = utils.create_file_paths(np.delete(np.arange(1, 27), [9,20,22,24,    t_id-1  ]), cond=cond, cond_typ=i)
-            _, tr_gt_path = utils.create_file_paths(np.delete(np.arange(1, 27), [9,20,22,24,  t_id-1   ]), cond=cond, cond_typ=i, sensor_sgn=0)
+            tr_vd_path, tr_lb_path = utils.create_file_paths(np.delete(np.arange(1, 27), [9,20,22,24   , t_id-1 ]), cond=cond, cond_typ=i)
+            _, tr_gt_path = utils.create_file_paths(np.delete(np.arange(1, 27), [9,20,22,24     , t_id-1 ]), cond=cond, cond_typ=i, sensor_sgn=0)
             te_vd_path, te_lb_path = utils.create_file_paths([t_id], cond=cond, cond_typ=i)
             _, te_gt_path = utils.create_file_paths([t_id], cond=cond, cond_typ=i, sensor_sgn=0)
             tr_vd_paths += tr_vd_path

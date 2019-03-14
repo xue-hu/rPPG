@@ -273,6 +273,7 @@ def cal_meanStd_vdiff(video_paths, width=64, height=64):
 
 def cal_meanStd_label(label_paths,gt_paths):
     sgn_li = []
+    diff_sgn_li = []
     skip_step = 256.0 / 30.0
     gt_skip_step = 16.0 / 30.0
     for label_path, gt_path in zip(label_paths, gt_paths):
@@ -294,14 +295,17 @@ def cal_meanStd_label(label_paths,gt_paths):
             gts = cvt_sensorSgn(gt_path, gt_skip_step, extra=True)
         
         labels = ppg_filt(labels,min(gts),max(gts))
+        mean = np.mean(labels)
+        std = np.std(labels)
+        sgn_li.append((mean, std))
         
         for idx in range(len(labels) - 1):
             val = float(labels[idx + 1] - labels[idx])
             file_label.append(val)
-        mean = np.mean(file_label)
-        std = np.std(file_label)
-        sgn_li.append((mean, std))
-    return cond, sgn_li
+        diff_mean = np.mean(file_label)
+        diff_std = np.std(file_label)
+        diff_sgn_li.append((diff_mean, diff_std))
+    return cond, sgn_li, diff_sgn_li
 
 
 def ppg_filt(labels,l_hr,h_hr):
@@ -312,8 +316,8 @@ def ppg_filt(labels,l_hr,h_hr):
     return labels
 
 
-def rescale_label(val,label_path):
-    mean, std = get_meanstd(label_path, mode='label')
+def rescale_label(val,label_path,mode='diff_label'):
+    mean, std = get_meanstd(label_path, mode=mode)
     val = val - mean
     val = val / std 
     if val > 3:
@@ -362,6 +366,9 @@ def get_meanstd(video_path, mode='video'):
             mean_std = pickle.load(file)
     elif mode == 'label':
         with open('LabelMeanStddev.pickle', 'rb') as file:
+            mean_std = pickle.load(file)
+    elif mode == 'diff_label':
+        with open('DiffLabelMeanStddev.pickle', 'rb') as file:
             mean_std = pickle.load(file)
             
     path = video_path.split('/')
@@ -529,8 +536,9 @@ def text_save(ppgs, video_path ,mode='a'):
 #         print(len(li))
 #     for key,li in vd_mean_std.items():
 #         print(len(li))
-    #########remote mean&std labels#####################################################################
+    ########remote mean&std labels#####################################################################
 #     dt = {}
+#     diff_dt = {}
 #     for cond in ['lighting', 'movement']:
 #         if cond == 'lighting':
 #             n = 6
@@ -539,16 +547,25 @@ def text_save(ppgs, video_path ,mode='a'):
 #         for i in range(n):
 #             _, lb = create_file_paths(np.arange(1, 27), cond=cond, cond_typ=i)
 #             _, gt = create_file_paths(np.arange(1, 27), cond=cond, cond_typ=i, sensor_sgn=0)
-#             con, col = cal_meanStd_label(lb,gt)
+#             con, col, diff_col = cal_meanStd_label(lb,gt)
 #             dt[con] = col
+#             diff_dt[con] = diff_col
 #     _, lb = create_extra_file_paths(range(1,18))
-#     con, col = cal_meanStd_label(lb, lb)
+#     con, col, diff_col = cal_meanStd_label(lb, lb)
 #     dt[con] = col
+#     diff_dt[con] = diff_col
 #     with open('LabelMeanStddev.pickle', 'wb') as f:
 #         pickle.dump(dt, f)
 #     f.close()
+#     with open('DiffLabelMeanStddev.pickle', 'wb') as f:
+#         pickle.dump(diff_dt, f)
+#     f.close()
 # #############################check generated labels###########################################
 #     with open('LabelMeanStddev.pickle', 'rb') as file:
+#         l_mean_std = pickle.load(file)
+#     for key,li in l_mean_std.items():
+#         print(key+' '+str(len(li)))
+#     with open('DiffLabelMeanStddev.pickle', 'rb') as file:
 #         l_mean_std = pickle.load(file)
 #     for key,li in l_mean_std.items():
 #         print(key+' '+str(len(li)))

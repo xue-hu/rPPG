@@ -212,20 +212,18 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
         labels = utils.ppg_filt(labels,min(gts),max(gts))
         
         lag = -utils.get_delay(video_path)
-        ecg_idx, vd_idx = 0,0#utils.get_startPoint(video_path)
-        #print('### lag: '+str(lag))
         start_pos = (clip - 1) * CLIP_SIZE
         end_pos = clip * CLIP_SIZE         
         for idx in range(start_pos, end_pos):
             frame, diff = next(diff_iterator)
 #             print('frame idx:'+str(lag + idx - vd_idx))
 #             print('label idx:'+str(idx+ lag + 1 - ecg_idx))
-            if len(frame) == 0 or len(diff) == 0 or (lag + idx - vd_idx) < 0 :
+            if len(frame) == 0 or len(diff) == 0 or (lag + idx) < 0 :
                 continue
-            if (lag + idx - vd_idx)>= len(labels)- 1:
+            if (lag + idx)>= len(labels)- 1:
                 break                        
-            gt = float(gts[idx - ecg_idx])
-            label = float(labels[idx+ lag + 1 - ecg_idx] - labels[idx+lag - ecg_idx])           
+            gt = float(gts[idx ])
+            label = float(labels[idx+ lag + 1] - labels[idx+lag ])           
             val = utils.rescale_label(label, label_path)
             #print('label idx: '+str(idx)+'+'+str(lag))
             #print(str(labels[idx+ lag + 1])+' - '+str(labels[idx+lag]))
@@ -242,18 +240,17 @@ def get_sample(video_path, label_path, gt_path, clip=1, width=112, height=112, m
         labels = utils.ppg_filt(labels,min(gts),max(gts))
         
         lag = utils.get_delay(video_path)
-        ecg_idx, vd_idx = 0,0#utils.get_startPoint(video_path)
-        #print('### lag: '+str(lag))
         for idx in range(N_FRAME - 1):
             frame, diff = next(diff_iterator)
-            if len(frame) == 0 or len(diff) == 0 or (lag + idx - vd_idx) < 0:
+            if len(frame) == 0 or len(diff) == 0 or (lag + idx) < 0:
                 continue
-            if (lag + idx - vd_idx)>= len(labels) - 1:
+            if (lag + idx)>= len(labels) - 1:
                 break
-            gt = float(gts[idx - ecg_idx])
-            label = float(labels[idx+ lag + 1 - ecg_idx] - labels[idx + lag - ecg_idx])
+            gt = float(gts[idx])
+            label = float(labels[idx+ lag + 1] - labels[idx + lag])
             val = utils.rescale_label(label,label_path)
             yield (frame, diff, val, gt)
+    
 
 
 def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, height=112, mode='train'):
@@ -325,8 +322,86 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
                     gt_batch = []
             except StopIteration:
                 continue
+        
 
+def get_frame_seq(video_path, label_path, gt_path,width=112, height=112,extra=False):
+    path = video_path.split('/')
+    if extra:
+        if int(path[4])>9:
+            prob_id = 'Proband' + path[4]
+        else:
+            prob_id = 'Proband0' + path[4]
+        cond = '301' 
+        n_clips = 600
+    else:
+        prob_id = path[4]
+        cond = path[5].split('_')[0]
+        n_clips = 120
+    mean, dev = utils.get_meanstd(video_path)
+    
+    gt_skip_step = ECG_SAMPLE_RATE / FRAME_RATE
+    gts = utils.cvt_sensorSgn(gt_path, gt_skip_step, extra=extra)
 
+    skip_step = PLE_SAMPLE_RATE / FRAME_RATE
+    labels = utils.cvt_sensorSgn(label_path, skip_step, extra=extra)
+    labels = utils.ppg_filt(labels,min(gts),max(gts))
+    lag = utils.get_delay(video_path)
+    
+    frame_seq = []
+    label_li = []
+    gt_li = []
+    for clip in range(1, int(n_clips + 1)):
+        scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
+        start_pos = (clip - 1) * CLIP_SIZE
+        end_pos = clip * CLIP_SIZE       
+        #print(cond + '-' + prob_id + '-clip' + str(clip))
+        for idx in range(start_pos, end_pos):
+            pre_path = scr_path + str(idx) + '.jpg'            
+            if not os.path.exists(pre_path) or (lag + idx) < 0:
+                continue
+            if (lag + idx)>= len(labels) - 1:
+                break
+            frame = cv2.imread(pre_path)#.astype(np.float32)            
+            pr_frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)            
+            pr_frame = utils.norm_frame(pr_frame, mean, dev) 
+            gt = float(gts[idx])
+            label = float(labels[idx+ lag] )
+            val = utils.rescale_label(label,label_path, mode='label')
+            frame_seq.append(pr_frame)
+            label_li.append(val)
+            gt_li.append(gt)
+    return frame_seq, label_li, gt_li
+
+                
+def get_seq_batch(video_paths, label_paths, gt_paths, window_size, batch_size, width=112, height=112):
+    frame_batch = []
+    diff_batch = []
+    label_batch = []
+    gt_batch = []
+    sample_li = []
+    paths = list(zip(video_paths, label_paths, gt_paths))
+    for (video_path, label_path, gt_path) in zip(video_paths, label_paths, gt_paths):
+            path = video_path.split('/')    
+            if len(path) > 6:
+                extra = False
+            else:
+                extra = True
+            fr_seq, label_li, gt_li = get_frame_seq(video_path, label_path, gt_path, width=width, height=height,extra=extra)
+            try:
+                for i in range(len(frame_seq)- window_size):
+                    if len(frame_batch) < batch_size:                        
+                        frame_batch.append(fr_seq[i: i + window_size])
+                        label_batch.append(label_li[i: i + window_size])
+                        gt_batch.append(gt_li[i: i + window_size])
+                        continue
+                    yield frame_batch, label_batch, gt_batch
+                    frame_batch = []
+                    label_batch = []
+                    gt_batch = []
+
+                
+                
+                
 def cvt_class(m):
     duration = 30
     all = []
