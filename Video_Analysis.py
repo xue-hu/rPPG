@@ -5,7 +5,8 @@ import os
 import time
 import tensorflow as tf
 import cv2
-import cnn_model
+import two_stream_vgg
+import face_vgg
 import process_data
 import utils
 import math
@@ -45,21 +46,9 @@ class VideoAnalysis(object):
                                            width=self.width, height=self.height, mode=mode)
         return batch_gen
 
-    def loading_model(self):
-        with tf.name_scope('Static_Input'):
-            self.input_img = tf.placeholder(dtype=tf.float32, name='input_img',
-                                            shape=[self.batch_size, self.height, self.width, 3])
-        with tf.name_scope('Dynamic_Input'):
-            self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff',
-                                             shape=[self.batch_size, self.height, self.width, 3])
-        with tf.name_scope('labels'):
-            self.labels = tf.placeholder(dtype=tf.float32, name='ppg_diff', shape=[self.batch_size, ])
-        with tf.name_scope('dropout'):
-            self.keep_prob = tf.placeholder(dtype=tf.float32, name='dropout_prob', shape=[])
-            
-        self.model = cnn_model.CnnModel(self.input_img, self.input_diff, self.keep_prob)
-        self.model.two_stream_vgg_load()
-
+    def loading_model(self):                     
+        self.model = two_stream_vgg.TwoStreamVgg(self.batch_size)
+        self.model.construct_network(self.width,self.height)
 
     def inference(self):
         self.reg_output = tf.reshape(self.model.reg_output, shape=[self.batch_size, ])
@@ -67,6 +56,8 @@ class VideoAnalysis(object):
         self.pred_class = tf.cast(tf.argmax(tf.nn.softmax(self.class_output),axis=1),tf.int32)
 
     def loss(self):
+        with tf.name_scope('labels'):
+            self.labels = tf.placeholder(dtype=tf.float32, name='ppg_diff', shape=[self.batch_size, ])
         print("crteate loss-Function.....")
         with tf.name_scope('loss'):
             ###########classification#####################################################################
@@ -163,7 +154,7 @@ class VideoAnalysis(object):
                 if n_batch%1000 == 0:                   
                     atten_map, d_conv2_2 = sess.run([self.model.atten_conv1_2_mask, self.model.d_conv2_2],feed_dict={self.input_img: frames,
                                                       self.input_diff: diffs,
-                                                      self.keep_prob: 1})
+                                                      self.model.keep_prob: 1})
                     if not os.path.exists('./n_processed_video/atten_map/'):
                         os.makedirs('./n_processed_video/atten_map/')
                     atten_map = np.asarray(atten_map ,dtype=np.float32).reshape((self.batch_size,self.height, self.width)) 
@@ -209,7 +200,7 @@ class VideoAnalysis(object):
                                                                 self.input_diff: diffs,
                                                                 self.labels: labels,
                                                                 self.gts: gts,
-                                                                self.keep_prob: 1})
+                                                                self.model.keep_prob: 1})
 
                     print('label:')
                     print(labels[:2])                  

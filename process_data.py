@@ -324,7 +324,7 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
                 continue
         
 
-def get_frame_seq(video_path, label_path, gt_path,width=112, height=112,extra=False):
+def get_sample_seq(video_path, label_path, gt_path,width=112, height=112,extra=False):
     path = video_path.split('/')
     if extra:
         if int(path[4])>9:
@@ -347,7 +347,7 @@ def get_frame_seq(video_path, label_path, gt_path,width=112, height=112,extra=Fa
     labels = utils.ppg_filt(labels,min(gts),max(gts))
     lag = utils.get_delay(video_path)
     
-    frame_seq = []
+    frame_li = []
     label_li = []
     gt_li = []
     for clip in range(1, int(n_clips + 1)):
@@ -357,42 +357,55 @@ def get_frame_seq(video_path, label_path, gt_path,width=112, height=112,extra=Fa
         #print(cond + '-' + prob_id + '-clip' + str(clip))
         for idx in range(start_pos, end_pos):
             pre_path = scr_path + str(idx) + '.jpg'            
-            if not os.path.exists(pre_path) or (lag + idx) < 0:
+            if (lag + idx) < 0:
                 continue
             if (lag + idx)>= len(labels) - 1:
                 break
-            frame = cv2.imread(pre_path)#.astype(np.float32)            
-            pr_frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)            
-            pr_frame = utils.norm_frame(pr_frame, mean, dev) 
+            if not os.path.exists(pre_path):
+                pr_frame = np.zeros((width, height,3))
+            else:
+                frame = cv2.imread(pre_path)#.astype(np.float32)            
+                pr_frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)            
+                pr_frame = utils.norm_frame(pr_frame, mean, dev) 
             gt = float(gts[idx])
             label = float(labels[idx+ lag] )
             val = utils.rescale_label(label,label_path, mode='label')
-            frame_seq.append(pr_frame)
+            frame_li.append(pr_frame)
             label_li.append(val)
             gt_li.append(gt)
-    return frame_seq, label_li, gt_li
+    return frame_li, label_li, gt_li
 
                 
-def get_seq_batch(video_paths, label_paths, gt_paths, window_size, batch_size, width=112, height=112):
+def get_seq_batch(video_paths, label_paths, gt_paths,batch_size, window_size, width=112, height=112):
     frame_batch = []
-    diff_batch = []
     label_batch = []
     gt_batch = []
-    sample_li = []
-    paths = list(zip(video_paths, label_paths, gt_paths))
     for (video_path, label_path, gt_path) in zip(video_paths, label_paths, gt_paths):
             path = video_path.split('/')    
             if len(path) > 6:
                 extra = False
             else:
                 extra = True
-            fr_seq, label_li, gt_li = get_frame_seq(video_path, label_path, gt_path, width=width, height=height,extra=extra)
-            try:
-                for i in range(len(frame_seq)- window_size):
-                    if len(frame_batch) < batch_size:                        
-                        frame_batch.append(fr_seq[i: i + window_size])
-                        label_batch.append(label_li[i: i + window_size])
-                        gt_batch.append(gt_li[i: i + window_size])
+            frame_li, label_li, gt_li= get_sample_seq(video_path, label_path, gt_path, width=width, height=height,extra=extra)
+            for i in range(len(frame_li)- window_size): 
+                if extra == False:
+                    frame_batch.append(frame_li[i: i + window_size])
+                    label_batch.append(label_li[i: i + window_size])
+                    gt_batch.append(gt_li[i: i + window_size])
+                    if len(frame_batch) < batch_size:       
+                        continue
+                    yield frame_batch, label_batch, gt_batch
+                    frame_batch = []
+                    label_batch = []
+                    gt_batch = []
+                else:
+                    if not np.all(frame_li[i: i + window_size], axis=0):
+                        print('batch contains None Frame!')
+                        continue
+                    frame_batch.append(frame_li[i: i + window_size])
+                    label_batch.append(label_li[i: i + window_size])
+                    gt_batch.append(gt_li[i: i + window_size])
+                    if len(frame_batch) < batch_size:       
                         continue
                     yield frame_batch, label_batch, gt_batch
                     frame_batch = []
