@@ -6,10 +6,12 @@ import tensorflow as tf
 import utils
 import scipy.io
 import numpy as np
+import math
 import cv2
 
 # VGG-19 parameters file
 N_CLASSES = 2
+FRAME_RATE = 30.0
 # VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat'
 # VGG_FILENAME = 'imagenet-vgg-verydeep-19.mat'
 # EXPECTED_BYTES = 534904783
@@ -19,8 +21,10 @@ EXPECTED_BYTES = 1086058494
 
 
 class CnnModel(object):
-    def __init__(self, batch_size):
+    def __init__(self, batch_size,img_width, img_height):
         self.batch_size = batch_size
+        self.width = img_width
+        self.height = img_height
         with tf.name_scope('dropout'):
             self.keep_prob = tf.placeholder(dtype=tf.float32, name='dropout_prob', shape=[])            
         utils.download(VGG_DOWNLOAD_LINK, VGG_FILENAME, EXPECTED_BYTES)
@@ -34,8 +38,6 @@ class CnnModel(object):
             name = self.vgg[0][lyr_idx][0][0][1][0]
         else:
             name = self.vgg[0][lyr_idx][0][0][0][0]
-        print('tr_name: '+ name)
-        print('name: '+ lyr_name)
         assert lyr_name == name
         return w, b.reshape(b.size)
 
@@ -71,8 +73,8 @@ class CnnModel(object):
         else:
             pad = 'SAME'
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
-            w = tf.get_variable(name="weight", dtype=tf.float32, initializer=w_init)
-            b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init)                
+            w = tf.get_variable(name="weight", dtype=tf.float32, initializer=w_init,trainable=False)
+            b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init,trainable=False)                
             conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding=pad)
             out = tf.nn.relu((conv + b), name=scope.name)
             
@@ -153,84 +155,6 @@ class CnnModel(object):
     def dropout_layer(self, dy_lyr):
         dy_lyr = tf.nn.dropout(dy_lyr, self.keep_prob)
 
-#     def two_stream_vgg_load(self,img_width, img_height):
-#         print("begin to construct two stream vgg......")
-        
-#         with tf.name_scope('Static_Input'):
-#             self.input_img = tf.placeholder(dtype=tf.float32, name='input_img',
-#                                             shape=[self.batch_size,img_width, img_height, 3])
-#         with tf.name_scope('Dynamic_Input'):
-#             self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff',
-#                                              shape=[self.batch_size, img_width, img_height, 3])
-            
-#         self.conv2d_tanh(self.input_diff, 32, 'conv1_1',lyr_idx=0)
-#         self.conv2d_tanh(self.d_conv1_1, 32, 'conv1_2')
-        
-#         self.conv2d_tanh(self.input_img,32, 'conv1_1',lyr_idx=0, stream_name='s')
-#         self.conv2d_tanh(self.s_conv1_1, 32, 'conv1_2', stream_name='s')
-        
-#         self.attention_layer(self.d_conv1_2, self.s_conv1_2, 'd_conv1_2', 's_conv1_2')
-#         self.avgpool(self.atten_conv1_2, 'pool1')
-#         self.avgpool(self.s_conv1_2, 'pool1', stream_name='s')
-#         self.dropout_layer(self.d_pool1)
-
-        
-
-#         self.conv2d_tanh(self.d_pool1, 64, 'conv2_1')
-#         self.conv2d_tanh(self.d_conv2_1, 64, 'conv2_2')
-        
-#         self.conv2d_tanh(self.s_pool1, 64, 'conv2_1', stream_name='s')
-#         self.conv2d_tanh(self.s_conv2_1, 64, 'conv2_2', stream_name='s')
-        
-#         self.attention_layer(self.d_conv2_2, self.s_conv2_2, 'd_conv2_2', 's_conv2_2')
-#         self.avgpool(self.atten_conv2_2, 'pool2')
-#         self.dropout_layer(self.d_pool2)
-
-#         self.fully_connected_layer(self.d_pool2, 128, 'fc7')
-#         self.dropout_layer(self.fc7)
-
-#         self.fully_connected_layer(self.fc7, 1, 'reg_output', last_lyr=True)
-#         self.fully_connected_layer(self.fc7, N_CLASSES, 'class_output', last_lyr=True)
-#         print('param nums: '+ str(self.t))
-#         print("done.")  
-        
-#     def vgg_face_load(self,img_width, img_height): 
-#         print("begin to construct two stream vgg......")
-        
-#         with tf.name_scope('Input'):
-#             self.input_img = tf.placeholder(dtype=tf.float32, name='input_img',
-#                                             shape=[self.batch_size,img_width, img_height, 3])
-            
-#         self.conv2d_relu(self.input_img, 0, 'conv1_1')
-#         self.conv2d_relu(self.conv1_1, 2, 'conv1_2')        
-#         self.avgpool(self.conv1_2, 'pool1', stream_name='s')
-#         #self.dropout_layer(self.s_pool1)
-
-#         self.conv2d_relu(self.s_pool1, 5, 'conv2_1')
-#         self.conv2d_relu(self.conv2_1, 7, 'conv2_2')
-#         self.avgpool(self.conv2_2, 'pool2', stream_name='s')
-#         #self.dropout_layer(self.s_pool2)
-
-#         self.conv2d_relu(self.s_pool2, 10, 'conv3_1')
-#         self.conv2d_relu(self.conv3_1, 12, 'conv3_2')
-#         self.conv2d_relu(self.conv3_2, 14, 'conv3_3')
-#         self.avgpool(self.conv3_3, 'pool3', stream_name='s')
-#         #self.dropout_layer(self.s_pool3)
-        
-#         self.conv2d_relu(self.s_pool3, 17, 'conv4_1')
-#         self.conv2d_relu(self.conv4_1, 19, 'conv4_2')
-#         self.conv2d_relu(self.conv4_2, 21, 'conv4_3')
-#         self.avgpool(self.conv4_3, 'pool4', stream_name='s')
-#         #self.dropout_layer(self.s_pool4)
-        
-#         self.conv2d_relu(self.s_pool4, 24, 'conv5_1')
-#         self.conv2d_relu(self.conv5_1, 26, 'conv5_2')
-#         self.conv2d_relu(self.conv5_2, 28, 'conv5_3')
-#         #self.avgpool(self.conv5_3, 'pool5', stream_name='s')
-#         #self.dropout_layer(self.s_pool5)
-        
-#         self.conv2d_relu(self.conv5_3, 31, 'fc6')
-#         self.conv2d_relu(self.fc6, 33, 'fc7')
 
         
 

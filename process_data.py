@@ -376,41 +376,41 @@ def get_sample_seq(video_path, label_path, gt_path,width=112, height=112,extra=F
     return frame_li, label_li, gt_li
 
                 
-def get_seq_batch(video_paths, label_paths, gt_paths,batch_size, window_size, width=112, height=112):
+def get_seq_batch(video_paths, label_paths, gt_paths,batch_size, window_size, clips,mode,width=112, height=112):
     frame_batch = []
     label_batch = []
     gt_batch = []
-    for (video_path, label_path, gt_path) in zip(video_paths, label_paths, gt_paths):
-            path = video_path.split('/')    
-            if len(path) > 6:
-                extra = False
+    sample_batch = []
+    random.shuffle(clips)
+    paths = list(zip(video_paths, label_paths, gt_paths))
+    for (video_path, label_path, gt_path) in paths:
+        path = video_path.split('/')    
+        if len(path) > 6:
+            extra = False
+        else:
+            extra = True
+        frame_li, label_li, gt_li= get_sample_seq(video_path, label_path, gt_path, width=width, height=height,extra=extra)
+        for i in range(len(frame_li)- window_size): 
+            if extra == False:
+                sample_batch.append((frame_li[i: i + window_size],label_li[i: i + window_size],gt_li[i: i + window_size]))                    
             else:
-                extra = True
-            frame_li, label_li, gt_li= get_sample_seq(video_path, label_path, gt_path, width=width, height=height,extra=extra)
-            for i in range(len(frame_li)- window_size): 
-                if extra == False:
-                    frame_batch.append(frame_li[i: i + window_size])
-                    label_batch.append(label_li[i: i + window_size])
-                    gt_batch.append(gt_li[i: i + window_size])
-                    if len(frame_batch) < batch_size:       
-                        continue
-                    yield frame_batch, label_batch, gt_batch
-                    frame_batch = []
-                    label_batch = []
-                    gt_batch = []
-                else:
-                    if not np.all(frame_li[i: i + window_size], axis=0):
-                        print('batch contains None Frame!')
-                        continue
-                    frame_batch.append(frame_li[i: i + window_size])
-                    label_batch.append(label_li[i: i + window_size])
-                    gt_batch.append(gt_li[i: i + window_size])
-                    if len(frame_batch) < batch_size:       
-                        continue
-                    yield frame_batch, label_batch, gt_batch
-                    frame_batch = []
-                    label_batch = []
-                    gt_batch = []
+                if not np.all(frame_li[i: i + window_size], axis=(1,2,3)).all():
+                    print('batch contains None Frame!')
+                    continue
+                sample_batch.append((frame_li[i: i + window_size],label_li[i: i + window_size],gt_li[i: i + window_size]))
+        if mode == 'train': 
+            random.shuffle(sample_batch)
+        for (frames,labels,gts) in sample_batch:
+            frame_batch.append(frames)
+            label_batch.append(labels)
+            gt_batch.append(gts)
+            if len(frame_batch) < batch_size:       
+                continue
+            yield frame_batch, label_batch, gt_batch
+            frame_batch = []
+            label_batch = []
+            gt_batch = []
+        sample_batch = []
 
                 
                 
