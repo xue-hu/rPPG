@@ -324,7 +324,7 @@ def get_batch(video_paths, label_paths, gt_paths, clips, batch_size, width=112, 
                 continue
         
 
-def get_sample_seq(video_path, label_path, gt_path,width=112, height=112,extra=False):
+def get_sample_seq(video_path, label_path, gt_path,window_size, clip,mode,width=112, height=112,extra=False):
     path = video_path.split('/')
     if extra:
         if int(path[4])>9:
@@ -346,21 +346,22 @@ def get_sample_seq(video_path, label_path, gt_path,width=112, height=112,extra=F
     labels = utils.cvt_sensorSgn(label_path, skip_step, extra=extra)
     labels = utils.ppg_filt(labels,min(gts),max(gts))
     lag = utils.get_delay(video_path)
-    
     frame_li = []
     label_li = []
     gt_li = []
-    for clip in range(1, int(n_clips + 1)):
-        scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
+    if mode == 'train':
         start_pos = (clip - 1) * CLIP_SIZE
-        end_pos = clip * CLIP_SIZE       
+        end_pos = clip * CLIP_SIZE + window_size       
         #print(cond + '-' + prob_id + '-clip' + str(clip))
         for idx in range(start_pos, end_pos):
-            pre_path = scr_path + str(idx) + '.jpg'            
             if (lag + idx) < 0:
                 continue
-            if (lag + idx)>= len(labels) - 1:
+            if (lag + idx)>= len(labels) or idx >= len(gts) or math.ceil(idx / CLIP_SIZE) > n_clips :
                 break
+                
+            offset = int(math.floor(( idx - start_pos ) / CLIP_SIZE))
+            scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip+offset) + '/'            
+            pre_path = scr_path + str(idx) + '.jpg'                        
             if not os.path.exists(pre_path):
                 pr_frame = np.zeros((width, height,3))
             else:
@@ -373,6 +374,31 @@ def get_sample_seq(video_path, label_path, gt_path,width=112, height=112,extra=F
             frame_li.append(pr_frame)
             label_li.append(val)
             gt_li.append(gt)
+        
+    else:
+        for clip in range(1, int(n_clips + 1)):
+            scr_path = './processed_video/' + cond + '/' + prob_id + '/' + str(clip) + '/'
+            start_pos = (clip - 1) * CLIP_SIZE
+            end_pos = clip * CLIP_SIZE       
+            #print(cond + '-' + prob_id + '-clip' + str(clip))
+            for idx in range(start_pos, end_pos):
+                if (lag + idx) < 0:
+                    continue
+                if (lag + idx)>= len(labels) or idx >= len(gts):
+                    break
+                pre_path = scr_path + str(idx) + '.jpg'                            
+                if not os.path.exists(pre_path):
+                    pr_frame = np.zeros((width, height,3))
+                else:
+                    frame = cv2.imread(pre_path)#.astype(np.float32)            
+                    pr_frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_CUBIC).astype(np.float32)            
+                    pr_frame = utils.norm_frame(pr_frame, mean, dev) 
+                gt = float(gts[idx])
+                label = float(labels[idx+ lag] )
+                val = utils.rescale_label(label,label_path, mode='label')
+                frame_li.append(pr_frame)
+                label_li.append(val)
+                gt_li.append(gt)
     return frame_li, label_li, gt_li
 
                 
@@ -383,34 +409,64 @@ def get_seq_batch(video_paths, label_paths, gt_paths,batch_size, window_size, cl
     sample_batch = []
     random.shuffle(clips)
     paths = list(zip(video_paths, label_paths, gt_paths))
-    for (video_path, label_path, gt_path) in paths:
-        path = video_path.split('/')    
-        if len(path) > 6:
-            extra = False
-        else:
-            extra = True
-        frame_li, label_li, gt_li= get_sample_seq(video_path, label_path, gt_path, width=width, height=height,extra=extra)
-        for i in range(len(frame_li)- window_size): 
-            if extra == False:
-                sample_batch.append((frame_li[i: i + window_size],label_li[i: i + window_size],gt_li[i: i + window_size]))                    
+    if mode == 'train':
+        for clip in clips:
+            random.shuffle(paths)
+            for (video_path, label_path, gt_path) in paths:
+                path = video_path.split('/')    
+                if len(path) > 6:
+                    extra = False
+                    if clip > 120:
+                        continue
+                else:
+                    extra = True
+                frame_li, label_li, gt_li= get_sample_seq(video_path, label_path, gt_path,window_size, clip=clip,mode=mode,width=width, height=height,extra=extra)
+                if (len(frame_li)- window_size)<0:
+                    continue
+                for i in range(len(frame_li)- window_size + 1): 
+                    if not np.all(frame_li[i: i + window_size], axis=(1,2,3)).all():
+                        print('batch contains None Frame!')
+                        continue
+                    sample_batch.append((frame_li[i: i + window_size],label_li[i: i + window_size],gt_li[i: i + window_size]))
+            random.shuffle(sample_batch)
+            for (frames,labels,gts) in sample_batch:
+                frame_batch.append(frames)
+                label_batch.append(labels)
+                gt_batch.append(gts)
+                if len(frame_batch) < batch_size:       
+                    continue
+                yield frame_batch, label_batch, gt_batch
+                frame_batch = []
+                label_batch = []
+                gt_batch = []
+            sample_batch = []
+        
+    else:
+        for (video_path, label_path, gt_path) in paths:
+            path = video_path.split('/')    
+            if len(path) > 6:
+                extra = False
             else:
+                extra = True
+            frame_li, label_li, gt_li= get_sample_seq(video_path, label_path, gt_path,window_size, clip=clips[0],mode=mode,width=width, height=height,extra=extra)
+            if (len(frame_li)- window_size)<0:
+                    continue
+            for i in range(len(frame_li)- window_size + 1): 
                 if not np.all(frame_li[i: i + window_size], axis=(1,2,3)).all():
                     print('batch contains None Frame!')
                     continue
                 sample_batch.append((frame_li[i: i + window_size],label_li[i: i + window_size],gt_li[i: i + window_size]))
-        if mode == 'train': 
-            random.shuffle(sample_batch)
-        for (frames,labels,gts) in sample_batch:
-            frame_batch.append(frames)
-            label_batch.append(labels)
-            gt_batch.append(gts)
-            if len(frame_batch) < batch_size:       
-                continue
-            yield frame_batch, label_batch, gt_batch
-            frame_batch = []
-            label_batch = []
-            gt_batch = []
-        sample_batch = []
+            for (frames,labels,gts) in sample_batch:
+                frame_batch.append(frames)
+                label_batch.append(labels)
+                gt_batch.append(gts)
+                if len(frame_batch) < batch_size:       
+                    continue
+                yield frame_batch, label_batch, gt_batch
+                frame_batch = []
+                label_batch = []
+                gt_batch = []
+            sample_batch = []
 
                 
                 
@@ -504,23 +560,23 @@ def cvt_class(m):
 #     except StopIteration:
 #         pass
 # print('<<<<<<<<<test gen>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-#test_gen = get_batch(VIDEO_PATHS, GT_PATHS, [1, 2], 500, mode='test')
-# idx = 0
-# try:
-#     while True:
-#         frames, diffs, labels = next(test_gen)
-#         for (frame, diff, label) in zip(frames, diffs, labels):
-#             print('batch-' + str(idx))
-#             idx += 1
-#     # cv2.imwrite(('frame'+ str(idx) + '.jpg'), frame)
-#     # cv2.imwrite(('diff'+ str(idx) + '.jpg'), diff)
-#     cv2.imshow('face', frame.astype(np.uint8))
-#     # cv2.imshow('diff', diff)
-# print(label)
-#     cv2.waitKey(0)
-#             break
-# except StopIteration:
-#     pass
+#     tr_vd_path, tr_lb_path = utils.create_file_paths([2])
+#     _, tr_gt_path = utils.create_file_paths([2], sensor_sgn=0)
+#     test_gen = get_batch(tr_vd_path, tr_lb_path, tr_gt_path ,np.arange(2, 601),32,mode='test')
+#     test_seq_gen = get_seq_batch(tr_vd_path, tr_lb_path, tr_gt_path ,32,2,np.arange(2, 601),mode='test')
+#     idx = 0
+#     try:
+#         while True:
+#             _,_, labels , gts= next(test_gen)
+#             _, b_labels, b_gts = next(test_seq_gen)
+#             print(np.asarray(b_labels)[:,0].shape)
+#             b_labels = np.reshape(b_labels[:,0],(32,))
+#             b_gts = np.reshape(b_gts[:,0],(32,))
+#             for (l,bl,gt,bgt) in zip(labels,b_labels,gts,b_gts):
+#                 #print(str(l) +' '+ str(bl))
+#                 print(str(gt) +' '+str(bgt))
+#     except StopIteration:
+#         pass
 
 ############local:read in ppg##########################################
     # with open('Pleth.pickle', 'rb') as f:

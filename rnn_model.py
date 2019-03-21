@@ -37,7 +37,7 @@ class RnnModel(object):
 
         
     def create_rnn(self):
-        layers = [tf.nn.rnn_cell.GRUCell(size) for size in self.hidden_sizes]
+        layers = [tf.nn.rnn_cell.GRUCell(size,kernel_initializer=tf.random_normal_initializer(stddev=0.4)) for size in self.hidden_sizes]
         cells = tf.nn.rnn_cell.MultiRNNCell(layers)
         cells = tf.nn.rnn_cell.DropoutWrapper(cells,output_keep_prob=self.keep_prob)
 
@@ -62,7 +62,8 @@ class RnnModel(object):
         
         
     def inference(self):
-        self.pred = tf.reshape(tf.layers.dense(self.output, 1, None),shape=[self.batch_size,self.length])
+        with tf.name_scope('predictions'):
+            self.pred = tf.reshape(tf.layers.dense(self.output, 1,kernel_initializer=tf.random_normal_initializer(stddev=0.4)),shape=[self.batch_size,self.length])
         
     def loss(self,model=None):
         with tf.name_scope('labels'):
@@ -85,8 +86,8 @@ class RnnModel(object):
         
     def evaluation(self, model=None):
         print("create evaluation methods.....")        
-        self.hrs = tf.placeholder(dtype=tf.float32, name='pred_hr', shape=[self.batch_size*self.length, ])
-        self.gts = tf.placeholder(dtype=tf.float32, name='ground_truth', shape=[self.batch_size*self.length, ])
+        self.hrs = tf.placeholder(dtype=tf.float32, name='pred_hr', shape=[self.batch_size, ])
+        self.gts = tf.placeholder(dtype=tf.float32, name='ground_truth', shape=[self.batch_size, ])
         with tf.name_scope('hr_accuracy'):
             diff = tf.abs(self.hrs - self.gts)
             indicator = tf.where(diff < 3)
@@ -104,17 +105,17 @@ class RnnModel(object):
         #summary_norm = tf.summary.scalar('grads_norm', self.grads_norm)
         #summary_grad = tf.summary.merge([tf.summary.histogram("%s-grad" % g[1].name, g[0]) for g in self.grads])
         summary_train = tf.summary.merge([summary_loss])#, summary_grad, summary_norm]) 
-        summary_test = tf.summary.merge([summary_loss, summary_hr_accuracy, summary_hr_mae]) 
+        summary_test = tf.summary.merge([summary_hr_accuracy, summary_hr_mae]) 
         return summary_train, summary_test
         
         
     def train_one_epoch(self, sess, writer, saver, train_gen,summary_op, epoch, step):
         total_loss = 0
-        n_batch = 0
+        n_batch = 1
         start_time = time.time()        
         try:
             while True:
-                print("epoch " + str(epoch + 1) + "-" + str(n_batch + 1))
+                print("epoch " + str(epoch + 1) + "-" + str(n_batch))
                 seq_batch,lb_batch, gt_batch = next(train_gen)
                 seq_batch = np.reshape(np.asarray(seq_batch),[self.batch_size*self.length, self.height, self.width, 3])
                 pred,loss,labels,_,summary = sess.run([self.pred,
@@ -129,13 +130,13 @@ class RnnModel(object):
                                                                                                  })
                 total_loss += loss
                 print('label:')
-                print(labels[0,:2])
+                print(labels[0,-2:])
                 print('pred:')
-                print(pred[0,:2])
-                n_batch += 1
+                print(pred[0,-2:])
                 writer.add_summary(summary, global_step=step)
                 step += 1
                 print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
+                n_batch += 1
                 
         except StopIteration:
             pass
@@ -168,7 +169,7 @@ class RnnModel(object):
             while True:
                 seq_batch,lb_batch, gt_batch = next(test_gen)
                 seq_batch = np.reshape(np.asarray(seq_batch),[self.batch_size*self.length, self.height, self.width, 3])
-                gt_batch = np.reshape(np.asarray(gt_batch),[self.batch_size*self.length,])
+                gt_batch = np.asarray(gt_batch, dtype=np.float32)[:,-1]
                 pred,labels = sess.run([self.pred, 
                                      self.labels], 
                                      feed_dict={self.feature_extracter.input_img:seq_batch,
@@ -178,10 +179,11 @@ class RnnModel(object):
                 
 
                 print('label:')
-                labels = np.reshape(labels, (-1))
+ 
+                labels = np.asarray(labels, dtype=np.float32)[:,-1]
                 print(labels[:2])                  
                 pred = pred
-                pred = np.reshape(pred, (-1))
+                pred = np.asarray(pred, dtype=np.float32)[:,-1]
                 print('pred:')
                 print(pred[:2])
                 ppgs += pred.tolist()
@@ -191,17 +193,14 @@ class RnnModel(object):
                 n_test += 1                     
                 if n_test >= thd:
                     print('cvt ppg >>>>>>>>>>>>')
-                    hrs = process_data.get_hr(ppgs, self.batch_size*self.length,duration, fs=FRAME_RATE)
-                    accuracy, summary = sess.run([self.hr_accuracy, summary_op], feed_dict={
-                        self.feature_extracter.input_img:seq_batch,
-                        self.labels:lb_batch,
-                        self.hrs: hrs,
+                    hrs = process_data.get_hr(ppgs, self.batch_size,duration, fs=FRAME_RATE)
+                    accuracy, summary = sess.run([self.hr_accuracy, summary_op], feed_dict={                                       self.hrs: hrs,
                         self.gts: gt_batch,
                         self.keep_prob:1,
                         self.feature_extracter.keep_prob:1})
                     gt_accuracy += accuracy
 
-                    ref_hrs = process_data.get_hr(ref_ppgs, self.batch_size*self.length, duration, fs=FRAME_RATE)
+                    ref_hrs = process_data.get_hr(ref_ppgs, self.batch_size, duration, fs=FRAME_RATE)
                     accuracy = sess.run([self.hr_accuracy], feed_dict={
                         self.feature_extracter.input_img:seq_batch,
                         self.labels:lb_batch,
@@ -215,7 +214,7 @@ class RnnModel(object):
                         hr_li.append(hr)
                         gt_li.append(gt)
                         ref_li.append(ref_hr)
-                        fileObject.write(str(round(i,2))+'      '+str(round(j,2))+'    :    '+str(int(hr))+'    '+ str(int(gt))+'    '+ str(int(ref_hr))+'\n')  
+                        fileObject.write(str(round(i,5))+'      '+str(round(j,5))+'    :    '+str(int(hr))+'    '+ str(int(gt))+'    '+ str(int(ref_hr))+'\n')  
 
                     writer.add_summary(summary, global_step=step)
                     step += 1                       
@@ -224,9 +223,9 @@ class RnnModel(object):
         mae = (np.abs(np.asarray(hr_li) - np.asarray(gt_li))).mean(axis=None)
         ref_mae = (np.abs(np.asarray(hr_li) - np.asarray(ref_li))).mean(axis=None)
         fileObject.seek(0)
-        fileObject.write( 'gt_accuracy: '+str(gt_accuracy / (n_test-thd))+'\n' ) 
+        fileObject.write( 'gt_accuracy: '+str(gt_accuracy / (n_test-thd+1))+'\n' ) 
         fileObject.write('MAE: '+str(mae)+'\n')  
-        fileObject.write('ref_accuracy: '+str(ref_accuracy / (n_test-thd))+'\n') 
+        fileObject.write('ref_accuracy: '+str(ref_accuracy / (n_test-thd+1))+'\n') 
         fileObject.write('ref_MAE: '+str(ref_mae)+'\n')  
         fileObject.close() 
         print('################Accuracy at epoch {0}: {1}'.format(epoch, gt_accuracy / ( n_test - thd) ))

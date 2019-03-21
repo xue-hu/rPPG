@@ -67,7 +67,7 @@ class TwoStreamVgg(cnn_model.CnnModel):
         
     def get_data(self, video_paths, label_paths, gt_paths,clips,mode='train'):
         print("create generator....")
-        batch_gen = process_data.get_batch(video_paths, label_paths, gt_paths, clips=clips, self.batch_size,
+        batch_gen = process_data.get_batch(video_paths, label_paths, gt_paths, clips, self.batch_size,
                                            width=self.width, height=self.height, mode=mode)
         return batch_gen
 

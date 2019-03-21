@@ -60,7 +60,7 @@ class FaceVgg(cnn_model.CnnModel):
         #self.dropout_layer(self.s_pool5)
         
         self.conv2d_relu(self.conv5_3, 31, 'fc6')
-        self.conv2d_relu(self.fc6, 33, 'fc7')
+        #self.conv2d_relu(self.fc6, 33, 'fc7')
 
         
     def get_data(self, video_paths, label_paths, gt_paths,window_size,clips,mode):
@@ -69,7 +69,7 @@ class FaceVgg(cnn_model.CnnModel):
         return batch_gen
        
     def inference(self):
-        self.output = self.fc7
+        self.output = self.fc6
         
         
     def loss(self):

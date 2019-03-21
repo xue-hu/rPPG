@@ -24,7 +24,7 @@ MODEL = 'reg'  #'classi'
 class VideoAnalysis(object):
     def __init__(self, train_video_paths, train_label_paths, train_gt_paths,
                  test_video_paths, test_label_paths, test_gt_paths,
-                 img_width, img_height):
+                 batch_size, lr,img_width, img_height):
         self.train_video_paths = train_video_paths
         self.train_label_paths = train_label_paths
         self.train_gt_paths = train_gt_paths
@@ -34,9 +34,9 @@ class VideoAnalysis(object):
         self.width = img_width
         self.height = img_height
         self.duration = 12
-        self.lr = 0.01
+        self.lr = lr
         self.sign_loss_weight = 1.0
-        self.batch_size = 64
+        self.batch_size = batch_size
         self.gstep = tf.Variable(0, trainable=False, name='global_step')
         self.skip_step = 50000    
 
@@ -68,16 +68,16 @@ class VideoAnalysis(object):
                 saver.restore(sess, ckpt.model_checkpoint_path)
                 print('loading stored params...........')
             pre_loss = 100
-            
-            train_gen = self.model.get_data(self.train_video_paths, self.train_label_paths, self.train_gt_paths,np.arange(2, 601),mode='train')
-            for epoch in range(n_epoch): 
+                        
+            for epoch in range(n_epoch):
+                train_gen = self.model.get_data(self.train_video_paths, self.train_label_paths, self.train_gt_paths,np.arange(2, 601),mode='train')
                 step, loss = self.model.train_one_epoch(sess, writer, saver, train_gen,summary_train, epoch, step)                
-                #saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
+                saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
                 if pre_loss <= loss:
                     self.lr = self.lr / 2.0
                 pre_loss = loss
                 for test_video_path, test_label_path, test_gt_path in zip(self.test_video_paths,self.test_label_paths, self.test_gt_paths):
-                    test_gen = self.model.get_data([test_video_path], [test_label_path], [test_gt_path],[1] mode='test')
+                    test_gen = self.model.get_data([test_video_path], [test_label_path], [test_gt_path],[1], mode='test')
                     self.model.eval_once(sess, writer,test_gen,test_video_path, self.duration, summary_test, epoch, step)                            
             writer.close()
 
@@ -171,8 +171,8 @@ if __name__ == '__main__':
     
 
 
-    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, tr_gt_paths, te_vd_paths, te_lb_paths, te_gt_paths, img_height=112, img_width=112 )
-    window_size = 4
+    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, tr_gt_paths, te_vd_paths, te_lb_paths, te_gt_paths, batch_size=32,lr=1, img_height=112, img_width=112 )
+    window_size = 30
     network = rnn_model.RnnModel(model.batch_size,window_size,model.width,model.height)
     model.build_graph(network)
     model.train(20)
