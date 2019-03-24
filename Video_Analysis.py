@@ -71,14 +71,13 @@ class VideoAnalysis(object):
                         
             for epoch in range(n_epoch):
                 train_gen = self.model.get_data(self.train_video_paths, self.train_label_paths, self.train_gt_paths,np.arange(2, 601),mode='train')
-                step, loss = self.model.train_one_epoch(sess, writer, saver, train_gen,summary_train, epoch, step)                
-                saver.save(sess, './checkpoint_dict/', global_step=self.gstep)
-                if pre_loss <= loss:
-                    self.lr = self.lr / 2.0
+                step, loss = self.model.train_one_epoch(sess, writer, saver, train_gen,summary_train, epoch, step)   
+                #if pre_loss <= loss:
+                self.lr = self.lr / 2.0
                 pre_loss = loss
                 for test_video_path, test_label_path, test_gt_path in zip(self.test_video_paths,self.test_label_paths, self.test_gt_paths):
                     test_gen = self.model.get_data([test_video_path], [test_label_path], [test_gt_path],[1], mode='test')
-                    self.model.eval_once(sess, writer,test_gen,test_video_path, self.duration, summary_test, epoch, step)                            
+                    step = self.model.eval_once(sess, writer,test_gen,test_video_path, self.duration, summary_test, epoch, step)                            
             writer.close()
 
 
@@ -134,35 +133,35 @@ if __name__ == '__main__':
             te_lb_paths += te_lb_path
             te_gt_paths += te_gt_path
 
-#     for cond in ['movement']:
-#         if cond == 'movement':
-#             n = [0]
-#         for i in n:
-#             tr_vd_path, tr_lb_path = utils.create_file_paths(np.delete(np.arange(1, 27), [3,4,     t_id-1]), cond=cond, cond_typ=i)
-#             _, tr_gt_path = utils.create_file_paths(np.delete(np.arange(1, 27), [3,4,      t_id-1]), cond=cond, cond_typ=i, sensor_sgn=0)
-#             te_vd_path, te_lb_path = utils.create_file_paths([t_id], cond=cond, cond_typ=i)
-#             _, te_gt_path = utils.create_file_paths([t_id], cond=cond, cond_typ=i, sensor_sgn=0)
-#             tr_vd_paths += tr_vd_path
-#             tr_lb_paths += tr_lb_path
-#             tr_gt_paths += tr_gt_path
-#             te_vd_paths += te_vd_path
-#             te_lb_paths += te_lb_path
-#             te_gt_paths += te_gt_path   
+    for cond in ['movement']:
+        if cond == 'movement':
+            n = [0]
+        for i in n:
+            tr_vd_path, tr_lb_path = utils.create_file_paths(np.delete(np.arange(1, 27), [3,4,     t_id-1]), cond=cond, cond_typ=i)
+            _, tr_gt_path = utils.create_file_paths(np.delete(np.arange(1, 27), [3,4,      t_id-1]), cond=cond, cond_typ=i, sensor_sgn=0)
+            te_vd_path, te_lb_path = utils.create_file_paths([t_id], cond=cond, cond_typ=i)
+            _, te_gt_path = utils.create_file_paths([t_id], cond=cond, cond_typ=i, sensor_sgn=0)
+            tr_vd_paths += tr_vd_path
+            tr_lb_paths += tr_lb_path
+            tr_gt_paths += tr_gt_path
+            te_vd_paths += te_vd_path
+            te_lb_paths += te_lb_path
+            te_gt_paths += te_gt_path   
 
-#     for cond in ['movement']:
-#         if cond == 'movement':
-#             n = [1]
-#         for i in n:
-#             tr_vd_path, tr_lb_path = utils.create_file_paths(np.delete(np.arange(1,27), [22     ,t_id-1]), cond=cond, cond_typ=i)
-#             _, tr_gt_path = utils.create_file_paths(np.delete(np.arange(1, 27), [22     ,t_id-1]), cond=cond, cond_typ=i, sensor_sgn=0)
-#             te_vd_path, te_lb_path = utils.create_file_paths([t_id], cond=cond, cond_typ=i)
-#             _, te_gt_path = utils.create_file_paths([t_id], cond=cond, cond_typ=i, sensor_sgn=0)
-#             tr_vd_paths += tr_vd_path
-#             tr_lb_paths += tr_lb_path
-#             tr_gt_paths += tr_gt_path
-#             te_vd_paths += te_vd_path
-#             te_lb_paths += te_lb_path
-#             te_gt_paths += te_gt_path   
+    for cond in ['movement']:
+        if cond == 'movement':
+            n = [1]
+        for i in n:
+            tr_vd_path, tr_lb_path = utils.create_file_paths(np.delete(np.arange(1,27), [22     ,t_id-1]), cond=cond, cond_typ=i)
+            _, tr_gt_path = utils.create_file_paths(np.delete(np.arange(1, 27), [22     ,t_id-1]), cond=cond, cond_typ=i, sensor_sgn=0)
+            te_vd_path, te_lb_path = utils.create_file_paths([t_id], cond=cond, cond_typ=i)
+            _, te_gt_path = utils.create_file_paths([t_id], cond=cond, cond_typ=i, sensor_sgn=0)
+            tr_vd_paths += tr_vd_path
+            tr_lb_paths += tr_lb_path
+            tr_gt_paths += tr_gt_path
+            te_vd_paths += te_vd_path
+            te_lb_paths += te_lb_path
+            te_gt_paths += te_gt_path   
 
     tr_vd_path, tr_lb_path = utils.create_extra_file_paths(np.delete(np.arange(1,16),[7,8,11]))
     tr_vd_paths += tr_vd_path
@@ -171,8 +170,8 @@ if __name__ == '__main__':
     
 
 
-    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, tr_gt_paths, te_vd_paths, te_lb_paths, te_gt_paths, batch_size=32,lr=1, img_height=112, img_width=112 )
-    window_size = 30
+    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, tr_gt_paths, te_vd_paths, te_lb_paths, te_gt_paths, batch_size=64 ,lr=0.08, img_height=112, img_width=112 )
+    window_size = 5
     network = rnn_model.RnnModel(model.batch_size,window_size,model.width,model.height)
     model.build_graph(network)
     model.train(20)

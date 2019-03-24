@@ -10,6 +10,7 @@ import numpy as np
 import math
 import cv2
 import face_vgg
+import fcn
 import process_data
 
 FRAME_RATE = 30.0
@@ -30,7 +31,8 @@ class RnnModel(object):
             
         
     def create_feat_seq(self):
-        self.feature_extracter = face_vgg.FaceVgg(self.batch_size*self.length,self.height, self.width)
+        #self.feature_extracter = face_vgg.FaceVgg(self.batch_size*self.length,self.height, self.width)
+        self.feature_extracter = fcn.FCN(self.batch_size*self.length,self.height, self.width, model='fcn')
         self.feature_extracter.construct_network() 
         self.feature_extracter.inference()
         self.feature_seq = tf.reshape(self.feature_extracter.output,(self.batch_size, self.length, -1))       
@@ -105,7 +107,7 @@ class RnnModel(object):
         #summary_norm = tf.summary.scalar('grads_norm', self.grads_norm)
         #summary_grad = tf.summary.merge([tf.summary.histogram("%s-grad" % g[1].name, g[0]) for g in self.grads])
         summary_train = tf.summary.merge([summary_loss])#, summary_grad, summary_norm]) 
-        summary_test = tf.summary.merge([summary_hr_accuracy, summary_hr_mae]) 
+        summary_test = tf.summary.merge([summary_loss, summary_hr_accuracy, summary_hr_mae]) 
         return summary_train, summary_test
         
         
@@ -133,6 +135,8 @@ class RnnModel(object):
                 print(labels[0,-2:])
                 print('pred:')
                 print(pred[0,-2:])
+                if n_batch % 3000 == 0 :
+                    saver.save(sess, './checkpoint_dict/', global_step=step)
                 writer.add_summary(summary, global_step=step)
                 step += 1
                 print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
@@ -170,8 +174,7 @@ class RnnModel(object):
                 seq_batch,lb_batch, gt_batch = next(test_gen)
                 seq_batch = np.reshape(np.asarray(seq_batch),[self.batch_size*self.length, self.height, self.width, 3])
                 gt_batch = np.asarray(gt_batch, dtype=np.float32)[:,-1]
-                pred,labels = sess.run([self.pred, 
-                                     self.labels], 
+                pred,labels,_ = sess.run([self.pred,self.labels, self.loss], 
                                      feed_dict={self.feature_extracter.input_img:seq_batch,
                                                    self.labels:lb_batch,
                                                    self.keep_prob:1,
@@ -194,7 +197,10 @@ class RnnModel(object):
                 if n_test >= thd:
                     print('cvt ppg >>>>>>>>>>>>')
                     hrs = process_data.get_hr(ppgs, self.batch_size,duration, fs=FRAME_RATE)
-                    accuracy, summary = sess.run([self.hr_accuracy, summary_op], feed_dict={                                       self.hrs: hrs,
+                    accuracy, summary = sess.run([self.hr_accuracy, summary_op], feed_dict={ 
+                        self.feature_extracter.input_img:seq_batch,
+                        self.labels:lb_batch,
+                        self.hrs: hrs,
                         self.gts: gt_batch,
                         self.keep_prob:1,
                         self.feature_extracter.keep_prob:1})
@@ -229,6 +235,7 @@ class RnnModel(object):
         fileObject.write('ref_MAE: '+str(ref_mae)+'\n')  
         fileObject.close() 
         print('################Accuracy at epoch {0}: {1}'.format(epoch, gt_accuracy / ( n_test - thd) ))
+        return step
 
 
 

@@ -12,34 +12,64 @@ import cv2
 # VGG-19 parameters file
 N_CLASSES = 2
 FRAME_RATE = 30.0
-# VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat'
-# VGG_FILENAME = 'imagenet-vgg-verydeep-19.mat'
-# EXPECTED_BYTES = 534904783
-VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/vgg-face.mat'
-VGG_FILENAME = 'vgg-face.mat'
-EXPECTED_BYTES = 1086058494
+
+VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat'
+VGG_FILENAME = 'imagenet-vgg-verydeep-19.mat'
+EXPECTED_BYTES = 534904783
+
+FACE_VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/vgg-face.mat'
+FACE_VGG_FILENAME = 'vgg-face.mat'
+FACE_VGG_EXPECTED_BYTES = 1086058494
+
+FCN_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/pascal-fcn8s-tvg-dag.mat'
+FCN_FILENAME = 'pascal-fcn8s-tvg-dag.mat'
+FCN_EXPECTED_BYTES = 500082003
 
 
 class CnnModel(object):
-    def __init__(self, batch_size,img_width, img_height):
+    def __init__(self, batch_size,img_width, img_height, model='face_vgg'):
         self.batch_size = batch_size
         self.width = img_width
         self.height = img_height
+        self.model = model
         with tf.name_scope('dropout'):
-            self.keep_prob = tf.placeholder(dtype=tf.float32, name='dropout_prob', shape=[])            
-        utils.download(VGG_DOWNLOAD_LINK, VGG_FILENAME, EXPECTED_BYTES)
-        self.vgg = scipy.io.loadmat(VGG_FILENAME)['layers']
+            self.keep_prob = tf.placeholder(dtype=tf.float32, name='dropout_prob', shape=[]) 
+        if model == 'face_vgg':
+            download_link = FACE_VGG_DOWNLOAD_LINK
+            filename = FACE_VGG_FILENAME
+            expected_bytes = FACE_VGG_EXPECTED_BYTES
+        elif model == 'deep_vgg':
+            download_link = VGG_DOWNLOAD_LINK
+            filename = VGG_FILENAME
+            expected_bytes = VGG_EXPECTED_BYTES
+        else:
+            download_link = FCN_DOWNLOAD_LINK
+            filename = FCN_FILENAME
+            expected_bytes = FCN_EXPECTED_BYTES
+            
+        utils.download(download_link, filename, expected_bytes)
+        self.vgg = scipy.io.loadmat(filename)
         self.t = 0
 
     def __vgg_weights(self, lyr_idx, lyr_name):
-        w = self.vgg[0][lyr_idx][0][0][2][0][0]
-        b = self.vgg[0][lyr_idx][0][0][2][0][1]        
-        if VGG_FILENAME == 'vgg-face.mat':
-            name = self.vgg[0][lyr_idx][0][0][1][0]
+             
+        if self.model == 'face_vgg':
+            name = self.vgg['layers'][0][lyr_idx][0][0][1][0]
+            w = self.vgg['layers'][0][lyr_idx][0][0][2][0][0]
+            b = self.vgg['layers'][0][lyr_idx][0][0][2][0][1]   
+        elif self.model == 'deep_vgg':
+            name = self.vgg['layers'][0][lyr_idx][0][0][0][0]
+            w = self.vgg['layers'][0][lyr_idx][0][0][2][0][0]
+            b = self.vgg['layers'][0][lyr_idx][0][0][2][0][1]   
         else:
-            name = self.vgg[0][lyr_idx][0][0][0][0]
-        assert lyr_name == name
+            name = self.vgg['params'][0][lyr_idx][0][0]
+            w = self.vgg['params'][0][lyr_idx][1]
+            b = self.vgg['params'][0][lyr_idx+1][1]  
+        print('true name: '+name)
+        print('asigned name: '+lyr_name)
+        assert lyr_name in name
         return w, b.reshape(b.size)
+    
 
     def conv2d_tanh(self, pre_lyr, out_dims, lyr_name, kernel_size=3, lyr_idx=1, stream_name='d'):
         if lyr_idx == 0:
@@ -64,7 +94,7 @@ class CnnModel(object):
         print(self.t)
         setattr(self, (stream_name + '_' + lyr_name), out)
         
-    def conv2d_relu(self, pre_lyr, lyr_idx, lyr_name, kernel_size=3):        
+    def conv2d_relu(self, pre_lyr, lyr_idx, lyr_name, kernel_size=3,trainable=True):        
         w_init, b_init = self.__vgg_weights(lyr_idx, lyr_name)
         w_init = tf.convert_to_tensor(w_init, dtype=tf.float32)
         b_init = tf.convert_to_tensor(b_init, dtype=tf.float32)
@@ -73,8 +103,8 @@ class CnnModel(object):
         else:
             pad = 'SAME'
         with tf.variable_scope(lyr_name, reuse=tf.AUTO_REUSE) as scope:
-            w = tf.get_variable(name="weight", dtype=tf.float32, initializer=w_init,trainable=False)
-            b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init,trainable=False)                
+            w = tf.get_variable(name="weight", dtype=tf.float32, initializer=w_init,trainable=trainable)
+            b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init,trainable=trainable)                
             conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding=pad)
             out = tf.nn.relu((conv + b), name=scope.name)
             

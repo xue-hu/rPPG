@@ -17,9 +17,9 @@ N_CLASSES = 2
 FRAME_RATE = 30.0
 
 
-class FaceVgg(cnn_model.CnnModel):    
+class FCN(cnn_model.CnnModel):    
     def construct_network(self):
-        print("begin to construct face-vgg......")
+        print("begin to construct FCN......")
         
         with tf.name_scope('Input'):
             self.input_img = tf.placeholder(dtype=tf.float32, name='input_img',
@@ -30,31 +30,31 @@ class FaceVgg(cnn_model.CnnModel):
         self.avgpool(self.conv1_2, 'pool1', stream_name='s')
         #self.dropout_layer(self.s_pool1)
 
-        self.conv2d_relu(self.s_pool1, 5, 'conv2_1')
-        self.conv2d_relu(self.conv2_1, 7, 'conv2_2')
+        self.conv2d_relu(self.s_pool1, 4, 'conv2_1')
+        self.conv2d_relu(self.conv2_1, 6, 'conv2_2')
         self.avgpool(self.conv2_2, 'pool2', stream_name='s')
         #self.dropout_layer(self.s_pool2)
 
-        self.conv2d_relu(self.s_pool2, 10, 'conv3_1')
-        self.conv2d_relu(self.conv3_1, 12, 'conv3_2')
-        self.conv2d_relu(self.conv3_2, 14, 'conv3_3')
+        self.conv2d_relu(self.s_pool2, 8, 'conv3_1')
+        self.conv2d_relu(self.conv3_1, 10, 'conv3_2')
+        self.conv2d_relu(self.conv3_2, 12, 'conv3_3')
         self.avgpool(self.conv3_3, 'pool3', stream_name='s')
         #self.dropout_layer(self.s_pool3)
         
-        self.conv2d_relu(self.s_pool3, 17, 'conv4_1')
-        self.conv2d_relu(self.conv4_1, 19, 'conv4_2')
-        self.conv2d_relu(self.conv4_2, 21, 'conv4_3')
+        self.conv2d_relu(self.s_pool3, 14, 'conv4_1')
+        self.conv2d_relu(self.conv4_1, 16, 'conv4_2')
+        self.conv2d_relu(self.conv4_2, 18, 'conv4_3')
         self.avgpool(self.conv4_3, 'pool4', stream_name='s')
         #self.dropout_layer(self.s_pool4)
         
-        self.conv2d_relu(self.s_pool4, 24, 'conv5_1')
-        self.conv2d_relu(self.conv5_1, 26, 'conv5_2')
-        self.conv2d_relu(self.conv5_2, 28, 'conv5_3')
+        self.conv2d_relu(self.s_pool4, 20, 'conv5_1')
+        self.conv2d_relu(self.conv5_1, 22, 'conv5_2')
+        self.conv2d_relu(self.conv5_2, 24  , 'conv5_3')
         #self.avgpool(self.conv5_3, 'pool5', stream_name='s')
         #self.dropout_layer(self.s_pool5)
         
-        self.conv2d_relu(self.conv5_3, 31, 'fc6')
-        #self.conv2d_relu(self.fc6, 33, 'fc7')
+        self.conv2d_relu(self.conv5_3, 26, 'fc6',trainable=True)
+        #self.conv2d_relu(self.fc6, 28, 'fc7',trainable=True)
 
         
     def get_data(self, video_paths, label_paths, gt_paths,window_size,clips,mode):
@@ -103,8 +103,8 @@ class FaceVgg(cnn_model.CnnModel):
         summary_train = tf.summary.merge([summary_class_loss, summary_sign_accuracy])
         summary_test = tf.summary.merge([summary_class_loss, summary_hr_accuracy]) 
         return summary_train, summary_test
-        
-        
+    
 if __name__ == '__main__':
-    m = FaceVgg(64,112,112)
+    m = FCN(64,112, 112, model='fcn')
     m.construct_network()
+        

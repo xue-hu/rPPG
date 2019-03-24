@@ -15,12 +15,6 @@ import process_data
 # VGG-19 parameters file
 N_CLASSES = 2
 FRAME_RATE = 30.0
-# VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat'
-# VGG_FILENAME = 'imagenet-vgg-verydeep-19.mat'
-# EXPECTED_BYTES = 534904783
-VGG_DOWNLOAD_LINK = 'http://www.vlfeat.org/matconvnet/models/vgg-face.mat'
-VGG_FILENAME = 'vgg-face.mat'
-EXPECTED_BYTES = 1086058494
 
 
 class TwoStreamVgg(cnn_model.CnnModel):
@@ -209,7 +203,7 @@ class TwoStreamVgg(cnn_model.CnnModel):
         try:
             while True:
                 frames, diffs, labels, gts = next(test_gen)
-                logits, pred_class, labels = sess.run([self.reg_output, self.pred_class, self.labels], feed_dict={self.input_img: frames,
+                logits, pred_class, labels,_ = sess.run([self.reg_output, self.pred_class, self.labels, self.loss], feed_dict={self.input_img: frames,
                                                             self.input_diff: diffs,
                                                             self.labels: labels,
                                                             self.gts: gts,
@@ -281,6 +275,7 @@ class TwoStreamVgg(cnn_model.CnnModel):
         fileObject.write('ref_MAE: '+str(ref_mae)+'\n')  
         fileObject.close() 
         print('################Accuracy at epoch {0}: {1}'.format(epoch, gt_accuracy / ( n_test - thd) ))
+        return step
 
 
     
