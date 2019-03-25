@@ -31,23 +31,25 @@ class RnnModel(object):
             
         
     def create_feat_seq(self):
-        #self.feature_extracter = face_vgg.FaceVgg(self.batch_size*self.length,self.height, self.width)
-        self.feature_extracter = fcn.FCN(self.batch_size*self.length,self.height, self.width, model='fcn')
+        self.feature_extracter = face_vgg.FaceVgg(self.batch_size*self.length,self.height, self.width, model='face_vgg')
+        #self.feature_extracter = fcn.FCN(self.batch_size*self.length,self.height, self.width, model='fcn')
         self.feature_extracter.construct_network() 
         self.feature_extracter.inference()
-        self.feature_seq = tf.reshape(self.feature_extracter.output,(self.batch_size, self.length, -1))       
+        with tf.variable_scope('input_seq', reuse=tf.AUTO_REUSE) as scope:
+            self.feature_seq = tf.reshape(self.feature_extracter.output,(self.batch_size, self.length, -1))       
 
         
     def create_rnn(self):
-        layers = [tf.nn.rnn_cell.GRUCell(size,kernel_initializer=tf.random_normal_initializer(stddev=0.4)) for size in self.hidden_sizes]
-        cells = tf.nn.rnn_cell.MultiRNNCell(layers)
-        cells = tf.nn.rnn_cell.DropoutWrapper(cells,output_keep_prob=self.keep_prob)
+        with tf.variable_scope('RNN', reuse=tf.AUTO_REUSE) as scope:    
+            layers = [tf.nn.rnn_cell.GRUCell(size,kernel_initializer=tf.random_normal_initializer(stddev=0.4)) for size in self.hidden_sizes]
+            cells = tf.nn.rnn_cell.MultiRNNCell(layers)
+            cells = tf.nn.rnn_cell.DropoutWrapper(cells,output_keep_prob=self.keep_prob)
 
-        zero_states = cells.zero_state(self.batch_size, dtype=tf.float32)
-        self.init_state = tuple([tf.placeholder_with_default(state, [None, state.shape[1]]) 
-                                for state in zero_states])
-        seq_length = tf.convert_to_tensor([self.length]*self.batch_size, dtype=tf.int32)
-        self.output, self.out_state = tf.nn.dynamic_rnn(cell=cells, 
+            zero_states = cells.zero_state(self.batch_size, dtype=tf.float32)
+            self.init_state = tuple([tf.placeholder_with_default(state, [None, state.shape[1]]) 
+                                    for state in zero_states])
+            seq_length = tf.convert_to_tensor([self.length]*self.batch_size, dtype=tf.int32)
+            self.output, self.out_state = tf.nn.dynamic_rnn(cell=cells, 
                                         inputs=self.feature_seq, 
                                         sequence_length=seq_length, 
                                         initial_state=self.init_state,
@@ -64,8 +66,10 @@ class RnnModel(object):
         
         
     def inference(self):
+        with tf.name_scope('final_output'):
+            self.output = tf.layers.dense(self.output, 1,kernel_initializer=tf.random_normal_initializer(stddev=0.4))
         with tf.name_scope('predictions'):
-            self.pred = tf.reshape(tf.layers.dense(self.output, 1,kernel_initializer=tf.random_normal_initializer(stddev=0.4)),shape=[self.batch_size,self.length])
+            self.pred = tf.reshape(self.output,shape=[self.batch_size,self.length])
         
     def loss(self,model=None):
         with tf.name_scope('labels'):
@@ -127,8 +131,8 @@ class RnnModel(object):
                                      summary_op], 
                                      feed_dict={self.feature_extracter.input_img:seq_batch,
                                                    self.labels:lb_batch,
-                                                   self.keep_prob:1,
-                                                   self.feature_extracter.keep_prob:1
+                                                   self.keep_prob:0.95,
+                                                   self.feature_extracter.keep_prob:0.95
                                                                                                  })
                 total_loss += loss
                 print('label:')

@@ -28,32 +28,32 @@ class FaceVgg(cnn_model.CnnModel):
         self.conv2d_relu(self.input_img, 0, 'conv1_1')
         self.conv2d_relu(self.conv1_1, 2, 'conv1_2')        
         self.avgpool(self.conv1_2, 'pool1', stream_name='s')
-        #self.dropout_layer(self.s_pool1)
+        self.dropout_layer(self.s_pool1)
 
         self.conv2d_relu(self.s_pool1, 5, 'conv2_1')
         self.conv2d_relu(self.conv2_1, 7, 'conv2_2')
         self.avgpool(self.conv2_2, 'pool2', stream_name='s')
-        #self.dropout_layer(self.s_pool2)
+        self.dropout_layer(self.s_pool2)
 
         self.conv2d_relu(self.s_pool2, 10, 'conv3_1')
         self.conv2d_relu(self.conv3_1, 12, 'conv3_2')
         self.conv2d_relu(self.conv3_2, 14, 'conv3_3')
         self.avgpool(self.conv3_3, 'pool3', stream_name='s')
-        #self.dropout_layer(self.s_pool3)
+        self.dropout_layer(self.s_pool3)
         
-        self.conv2d_relu(self.s_pool3, 17, 'conv4_1')
-        self.conv2d_relu(self.conv4_1, 19, 'conv4_2')
-        self.conv2d_relu(self.conv4_2, 21, 'conv4_3')
-        self.avgpool(self.conv4_3, 'pool4', stream_name='s')
-        #self.dropout_layer(self.s_pool4)
+#         self.conv2d_relu(self.s_pool3, 17, 'conv4_1')
+#         self.conv2d_relu(self.conv4_1, 19, 'conv4_2')
+#         self.conv2d_relu(self.conv4_2, 21, 'conv4_3')
+#         self.avgpool(self.conv4_3, 'pool4', stream_name='s')
+#         self.dropout_layer(self.s_pool4)
         
-        self.conv2d_relu(self.s_pool4, 24, 'conv5_1')
-        self.conv2d_relu(self.conv5_1, 26, 'conv5_2')
-        self.conv2d_relu(self.conv5_2, 28, 'conv5_3')
+#         self.conv2d_relu(self.s_pool4, 24, 'conv5_1')
+#         self.conv2d_relu(self.conv5_1, 26, 'conv5_2')
+#         self.conv2d_relu(self.conv5_2, 28, 'conv5_3')
         #self.avgpool(self.conv5_3, 'pool5', stream_name='s')
         #self.dropout_layer(self.s_pool5)
         
-        self.conv2d_relu(self.conv5_3, 31, 'fc6')
+        #self.conv2d_relu(self.conv5_3, 31, 'fc6')
         #self.conv2d_relu(self.fc6, 33, 'fc7')
 
         
@@ -63,7 +63,21 @@ class FaceVgg(cnn_model.CnnModel):
         return batch_gen
        
     def inference(self):
-        self.output = self.fc6
+        batch, height, width, depth = self.s_pool3.shape.as_list()
+        
+#         with tf.variable_scope('1x1_conv', reuse=tf.AUTO_REUSE) as scope:
+#             w = tf.get_variable("weight", dtype=tf.float32, shape=[1, 1, depth, 1],
+#    initializer=tf.random_normal_initializer(stddev=0.1))
+#             b = tf.get_variable("bias", dtype=tf.float32, shape=[1, ],
+#                                 initializer=tf.constant_initializer(0.0))
+#             z = tf.nn.conv2d(self.conv5_3, w, strides=[1, 1, 1, 1], padding='VALID') + b
+#             self.output = tf.layers.flatten( tf.nn.tanh(z) )  
+
+        with tf.variable_scope('GAP', reuse=tf.AUTO_REUSE) as scope:            
+            z = tf.layers.average_pooling2d(self.s_pool3,pool_size=[height, width],strides=[1, 1], padding='VALID')
+            self.output = tf.layers.flatten( tf.nn.tanh(z) )  
+
+        #self.output = self.fc6
         
         
     def loss(self):

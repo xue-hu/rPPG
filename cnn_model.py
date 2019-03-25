@@ -107,6 +107,7 @@ class CnnModel(object):
             b = tf.get_variable(name="bias", dtype=tf.float32, initializer=b_init,trainable=trainable)                
             conv = tf.nn.conv2d(pre_lyr, w, strides=[1, 1, 1, 1], padding=pad)
             out = tf.nn.relu((conv + b), name=scope.name)
+            #out = tf.nn.tanh((conv + b), name=scope.name)
             
         print(lyr_name)
         print(w.shape)

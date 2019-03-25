@@ -41,7 +41,7 @@ class VideoAnalysis(object):
         self.skip_step = 50000    
 
     def loading_model(self,network_obj):                     
-        self.model = network_obj #two_stream_vgg.TwoStreamVgg(self.batch_size,self.width,self.height)
+        self.model = network_obj #RNN or Two-stream VGG
         self.model.construct_network()
         
         
@@ -73,7 +73,7 @@ class VideoAnalysis(object):
                 train_gen = self.model.get_data(self.train_video_paths, self.train_label_paths, self.train_gt_paths,np.arange(2, 601),mode='train')
                 step, loss = self.model.train_one_epoch(sess, writer, saver, train_gen,summary_train, epoch, step)   
                 #if pre_loss <= loss:
-                self.lr = self.lr / 2.0
+                self.lr = self.lr / 10.0
                 pre_loss = loss
                 for test_video_path, test_label_path, test_gt_path in zip(self.test_video_paths,self.test_label_paths, self.test_gt_paths):
                     test_gen = self.model.get_data([test_video_path], [test_label_path], [test_gt_path],[1], mode='test')
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     
 
 
-    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, tr_gt_paths, te_vd_paths, te_lb_paths, te_gt_paths, batch_size=64 ,lr=0.08, img_height=112, img_width=112 )
+    model = VideoAnalysis(tr_vd_paths, tr_lb_paths, tr_gt_paths, te_vd_paths, te_lb_paths, te_gt_paths, batch_size=128 ,lr=0.0001, img_height=112, img_width=112 )
     window_size = 5
     network = rnn_model.RnnModel(model.batch_size,window_size,model.width,model.height)
     model.build_graph(network)
