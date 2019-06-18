@@ -28,26 +28,26 @@ class TwoStreamVgg(cnn_model.CnnModel):
             self.input_diff = tf.placeholder(dtype=tf.float32, name='input_diff',
                                              shape=[self.batch_size, self.width, self.height, 3])
             
-        self.conv2d_tanh(self.input_diff, 32, 'conv1_1',lyr_idx=0)
-        self.conv2d_tanh(self.d_conv1_1, 32, 'conv1_2')
+        self.conv2d_tanh(self.input_diff,0, 32, 'conv1_1')
+        self.conv2d_tanh(self.d_conv1_1, 2, 32, 'conv1_2')
         
-        self.conv2d_tanh(self.input_img,32, 'conv1_1',lyr_idx=0, stream_name='s')
-        self.conv2d_tanh(self.s_conv1_1, 32, 'conv1_2', stream_name='s')
+        self.conv2d_tanh(self.input_img,0,32, 'conv1_1', stream_name='s')
+        self.conv2d_tanh(self.s_conv1_1, 2, 32, 'conv1_2', stream_name='s')
         
-        self.attention_layer(self.d_conv1_2, self.s_conv1_2, 'd_conv1_2', 's_conv1_2')
+        self.attention_layer(self.d_conv1_2, self.s_conv1_2, 'conv1_2')
         self.avgpool(self.atten_conv1_2, 'pool1')
         self.avgpool(self.s_conv1_2, 'pool1', stream_name='s')
         self.dropout_layer(self.d_pool1)
 
         
 
-        self.conv2d_tanh(self.d_pool1, 64, 'conv2_1')
-        self.conv2d_tanh(self.d_conv2_1, 64, 'conv2_2')
+        self.conv2d_tanh(self.d_pool1, 5,64, 'conv2_1')
+        self.conv2d_tanh(self.d_conv2_1,7, 64, 'conv2_2')
         
-        self.conv2d_tanh(self.s_pool1, 64, 'conv2_1', stream_name='s')
-        self.conv2d_tanh(self.s_conv2_1, 64, 'conv2_2', stream_name='s')
+        self.conv2d_tanh(self.s_pool1, 5,64, 'conv2_1', stream_name='s')
+        self.conv2d_tanh(self.s_conv2_1,7, 64, 'conv2_2', stream_name='s')
         
-        self.attention_layer(self.d_conv2_2, self.s_conv2_2, 'd_conv2_2', 's_conv2_2')
+        self.attention_layer(self.d_conv2_2, self.s_conv2_2, 'conv2_2')
         self.avgpool(self.atten_conv2_2, 'pool2')
         self.dropout_layer(self.d_pool2)
 
@@ -141,7 +141,7 @@ class TwoStreamVgg(cnn_model.CnnModel):
         try:
             while True:
                 print("epoch " + str(epoch + 1) + "-" + str(n_batch + 1))
-                (frames, diffs, labels, gts) = next(train_gen)
+                (_,frames, diffs, labels, gts) = next(train_gen)
                 loss,_, logits, pred_clss, labels, __, summary = sess.run([self.loss, self.class_loss,
                                                                  self.reg_output,                                                                         self.pred_class,
                                                                  self.labels, self.opt,
@@ -159,12 +159,12 @@ class TwoStreamVgg(cnn_model.CnnModel):
                 writer.add_summary(summary, global_step=step)
                 step += 1
                 print('Average loss at batch {0}: {1}'.format(n_batch, total_loss / n_batch))
-                if n_batch%1000 == 0:                   
-                    atten_map, d_conv2_2 = sess.run([self.model.atten_conv1_2_mask, self.model.d_conv2_2],feed_dict={self.model.input_img: frames,
+                if n_batch%500 == 0:                   
+                    atten_map, d_conv2_2 = sess.run([self.atten_conv1_2_mask, self.d_conv2_2],feed_dict={self.input_img: frames,
                                                       self.input_diff: diffs,
                                                       self.keep_prob: 1})
-                    if not os.path.exists('./n_processed_video/atten_map/'):
-                        os.makedirs('./n_processed_video/atten_map/')
+                    if not os.path.exists('./atten_map/'):
+                        os.makedirs('./atten_map/')
                     atten_map = np.asarray(atten_map ,dtype=np.float32).reshape((self.batch_size,self.height, self.width)) 
                     atten_map = atten_map[0,:,:] * 255
                     atten_map[atten_map > 255] = 255
@@ -172,7 +172,7 @@ class TwoStreamVgg(cnn_model.CnnModel):
                     print(atten_map[:2,:2])
                     print('############dy_conv_map2_2:')
                     print(d_conv2_2[0,:2,:2,0])
-                    cv2.imwrite( ('./n_processed_video/atten_map/'+str(epoch)+'-'+str(step) + '.jpg'),atten_map)                 
+                    cv2.imwrite( ('./atten_map/'+str(epoch)+'-'+str(step) + '.jpg'),atten_map)                 
         except StopIteration:
             pass
         print('Average loss at epoch {0}: {1}'.format(epoch, total_loss / n_batch))
@@ -180,7 +180,7 @@ class TwoStreamVgg(cnn_model.CnnModel):
         return step,(total_loss / n_batch)
 
 
-    def eval_once(self, sess, writer, test_gen,test_video_path, duration,summary_op, epoch, step):
+    def eval_once(self, sess, writer, test_gen,test_video_path, duration,summary_op, epoch, step,model = 'reg'):
         print("begin to evaluate.....")        
         thd = math.ceil(duration * FRAME_RATE / self.batch_size) + 1
 #         for test_video_path, test_label_path, test_gt_path in zip(self.test_video_paths,self.test_label_paths, self.test_gt_paths):
@@ -202,7 +202,7 @@ class TwoStreamVgg(cnn_model.CnnModel):
         ref_ppgs = []
         try:
             while True:
-                frames, diffs, labels, gts = next(test_gen)
+                _,frames, diffs, labels, gts = next(test_gen)
                 logits, pred_class, labels,_ = sess.run([self.reg_output, self.pred_class, self.labels, self.loss], feed_dict={self.input_img: frames,
                                                             self.input_diff: diffs,
                                                             self.labels: labels,
@@ -211,7 +211,7 @@ class TwoStreamVgg(cnn_model.CnnModel):
 
                 print('label:')
                 print(labels[:2])                  
-                if MODEL == 'reg':
+                if model == 'reg':
                     pred = logits.tolist()
                     print('pred:')
                     print(pred[:2])
@@ -227,7 +227,7 @@ class TwoStreamVgg(cnn_model.CnnModel):
                 if n_test >= thd:
                     print('cvt ppg >>>>>>>>>>>>')
                     hrs = process_data.get_hr(ppgs, self.batch_size, duration, fs=FRAME_RATE)
-                    accuracy, summary = sess.run([self.model.hr_accuracy, summary_op], feed_dict={
+                    accuracy, summary = sess.run([self.hr_accuracy, summary_op], feed_dict={
                         self.input_img: frames,
                         self.input_diff: diffs,
                         self.labels: labels,
@@ -254,16 +254,16 @@ class TwoStreamVgg(cnn_model.CnnModel):
 
                     writer.add_summary(summary, global_step=step)
                     step += 1  
-#                     if n_test%50 == 0:                   
-#                         atten_map = sess.run([self.model.atten_conv1_2_mask],feed_dict={self.input_img: frames,
-#                                                           self.input_diff: diffs,
-#                                                           self.keep_prob: 1})
-#                         if not os.path.exists('./predict_results/'):
-#                             os.makedirs('./predict_results/')
-#                         atten_map = np.asarray(atten_map ,dtype=np.float32).reshape((self.batch_size,self.height, self.width, 1)) 
-#                         atten_map = atten_map[0,:,:] * 255
-#                         atten_map[atten_map > 255] = 255                    
-#                         cv2.imwrite( ('./predict_results/test-'+str(epoch)+'-'+str(step)+'-' +cond+'-'+prob_id+ '.jpg'),atten_map)    
+                    if n_test%50 == 0:                   
+                        atten_map = sess.run([self.atten_conv1_2_mask],feed_dict={self.input_img: frames,
+                                                          self.input_diff: diffs,
+                                                          self.keep_prob: 1})
+                        if not os.path.exists('./predict_results/'):
+                            os.makedirs('./predict_results/')
+                        atten_map = np.asarray(atten_map ,dtype=np.float32).reshape((self.batch_size,self.height, self.width, 1)) 
+                        atten_map = atten_map[0,:,:] * 255
+                        atten_map[atten_map > 255] = 255                    
+                        cv2.imwrite( ('./predict_results/test-'+str(epoch)+'-'+str(step)+'-' +cond+'-'+prob_id+ '.jpg'),atten_map)    
         except StopIteration:
             pass
         mae = (np.abs(np.asarray(hr_li) - np.asarray(gt_li))).mean(axis=None)
